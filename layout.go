@@ -22,6 +22,8 @@ func (s SinglePane) compute(totalWidth, totalHeight int) (paneSize, paneSize, bo
 type DualPane struct {
 	Main         Component // Main pane component
 	Side         Component // Sidebar component
+	MainName     string    // Display name for focus badge (default: "Main")
+	SideName     string    // Display name for focus badge (default: "Side")
 	SideWidth    int       // Fixed width of the sidebar
 	MinMainWidth int       // Sidebar auto-hides below this main width
 	SideRight    bool      // true = sidebar on right, false = on left

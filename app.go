@@ -435,15 +435,20 @@ func (a *appModel) resize() {
 		a.statusBar.SetSize(a.width, 1)
 	}
 
+	compHeight := contentHeight
+	if a.showBadges() {
+		compHeight--
+	}
+
 	if a.dualPane != nil {
-		main, side, sideVisible := a.dualPane.compute(a.width, contentHeight)
+		main, side, sideVisible := a.dualPane.compute(a.width, compHeight)
 		a.dualPane.Main.SetSize(main.width, main.height)
 		if a.dualPane.Side != nil && sideVisible {
 			a.dualPane.Side.SetSize(side.width, side.height)
 		}
 	} else {
 		for _, nc := range a.components {
-			nc.component.SetSize(a.width, contentHeight)
+			nc.component.SetSize(a.width, compHeight)
 		}
 	}
 
@@ -455,11 +460,32 @@ func (a *appModel) resize() {
 	}
 }
 
+func (a *appModel) showBadges() bool {
+	return len(a.focusableComponents()) > 1
+}
+
+func (a *appModel) renderBadge(name string, focused bool) string {
+	if focused {
+		return lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color(a.theme.TextInverse)).
+			Background(lipgloss.Color(a.theme.Accent)).
+			Padding(0, 1).
+			Render(name)
+	}
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color(a.theme.Muted)).
+		Padding(0, 1).
+		Render(name)
+}
+
 func (a *appModel) View() string {
 	// Active overlay takes over the screen
 	if overlay := a.overlays.active(); overlay != nil {
 		return overlay.View()
 	}
+
+	badges := a.showBadges()
 
 	var content string
 	if a.dualPane != nil {
@@ -467,18 +493,45 @@ func (a *appModel) View() string {
 		if a.statusBar != nil {
 			contentHeight--
 		}
-		_, _, sideVisible := a.dualPane.compute(a.width, contentHeight)
+		compHeight := contentHeight
+		if badges {
+			compHeight--
+		}
+		_, _, sideVisible := a.dualPane.compute(a.width, compHeight)
+
+		mainName := a.dualPane.MainName
+		if mainName == "" {
+			mainName = "Main"
+		}
 		mainView := a.dualPane.Main.View()
+		if badges {
+			badge := a.renderBadge(mainName, a.focusIdx == 0)
+			mainView = lipgloss.JoinVertical(lipgloss.Left, badge, mainView)
+		}
+
 		if sideVisible && a.dualPane.Side != nil {
+			sideName := a.dualPane.SideName
+			if sideName == "" {
+				sideName = "Side"
+			}
 			sideView := a.dualPane.Side.View()
+			if badges {
+				badge := a.renderBadge(sideName, a.focusIdx == 1)
+				sideView = lipgloss.JoinVertical(lipgloss.Left, badge, sideView)
+			}
 			content = a.joinPanes(mainView, sideView, contentHeight)
 		} else {
 			content = mainView
 		}
 	} else {
 		var views []string
-		for _, nc := range a.components {
-			views = append(views, nc.component.View())
+		for i, nc := range a.components {
+			v := nc.component.View()
+			if badges {
+				badge := a.renderBadge(nc.name, i == a.focusIdx)
+				v = lipgloss.JoinVertical(lipgloss.Left, badge, v)
+			}
+			views = append(views, v)
 		}
 		content = lipgloss.JoinVertical(lipgloss.Left, views...)
 	}
