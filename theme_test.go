@@ -55,3 +55,68 @@ func TestThemeFromMapDefaults(t *testing.T) {
 		t.Errorf("expected default Positive %v, got %v", defaults.Positive, theme.Positive)
 	}
 }
+
+func TestThemeFromMapExtra(t *testing.T) {
+	m := map[string]string{
+		"positive": "#00ff00",
+		"push":     "#22c55e",
+		"pr":       "#3b82f6",
+		"review":   "#a855f7",
+	}
+	theme := ThemeFromMap(m)
+	if theme.Positive != lipgloss.Color("#00ff00") {
+		t.Errorf("expected #00ff00, got %v", theme.Positive)
+	}
+	if theme.Extra == nil {
+		t.Fatal("Extra should not be nil when unknown keys are provided")
+	}
+	if theme.Extra["push"] != lipgloss.Color("#22c55e") {
+		t.Errorf("Extra[push] = %v, want #22c55e", theme.Extra["push"])
+	}
+	if theme.Extra["pr"] != lipgloss.Color("#3b82f6") {
+		t.Errorf("Extra[pr] = %v, want #3b82f6", theme.Extra["pr"])
+	}
+	if theme.Extra["review"] != lipgloss.Color("#a855f7") {
+		t.Errorf("Extra[review] = %v, want #a855f7", theme.Extra["review"])
+	}
+}
+
+func TestThemeColor(t *testing.T) {
+	theme := DefaultTheme()
+	theme.Extra = map[string]lipgloss.Color{
+		"star": lipgloss.Color("#ffaa00"),
+	}
+
+	// Existing key
+	got := theme.Color("star", lipgloss.Color("#000000"))
+	if got != lipgloss.Color("#ffaa00") {
+		t.Errorf("Color(star) = %v, want #ffaa00", got)
+	}
+
+	// Missing key falls back
+	got = theme.Color("missing", lipgloss.Color("#111111"))
+	if got != lipgloss.Color("#111111") {
+		t.Errorf("Color(missing) = %v, want #111111 (fallback)", got)
+	}
+}
+
+func TestThemeColorNilExtra(t *testing.T) {
+	theme := DefaultTheme()
+	// Extra is nil by default
+	got := theme.Color("anything", lipgloss.Color("#aabbcc"))
+	if got != lipgloss.Color("#aabbcc") {
+		t.Errorf("Color with nil Extra should return fallback, got %v", got)
+	}
+}
+
+func TestThemeFromMapNoExtraForBuiltins(t *testing.T) {
+	m := map[string]string{
+		"positive": "#00ff00",
+		"text":     "#ffffff",
+	}
+	theme := ThemeFromMap(m)
+	// Built-in keys should NOT appear in Extra
+	if theme.Extra != nil && len(theme.Extra) > 0 {
+		t.Errorf("Extra should be empty for built-in keys only, got %v", theme.Extra)
+	}
+}

@@ -14,6 +14,18 @@ type Theme struct {
 	Cursor      lipgloss.Color // Cursor/selection highlight
 	Border      lipgloss.Color // Borders, separators
 	Flash       lipgloss.Color // Temporary notification background
+	Extra       map[string]lipgloss.Color // App-specific color tokens
+}
+
+// Color returns an app-specific color from Extra by key, falling back to
+// the provided default if the key doesn't exist.
+func (t Theme) Color(key string, fallback lipgloss.Color) lipgloss.Color {
+	if t.Extra != nil {
+		if c, ok := t.Extra[key]; ok {
+			return c
+		}
+	}
+	return fallback
 }
 
 // DefaultTheme returns a dark theme suitable for most terminal backgrounds.
@@ -49,34 +61,29 @@ func LightTheme() Theme {
 // ThemeFromMap creates a Theme from a map of color names to hex values.
 // Missing keys fall back to DefaultTheme values. This is config-format-agnostic:
 // your app reads YAML/JSON/TOML and passes the color map here.
+// Keys not matching a built-in token are placed in the Extra map.
 func ThemeFromMap(m map[string]string) Theme {
 	t := DefaultTheme()
-	if v, ok := m["positive"]; ok {
-		t.Positive = lipgloss.Color(v)
+	builtins := map[string]*lipgloss.Color{
+		"positive":     &t.Positive,
+		"negative":     &t.Negative,
+		"accent":       &t.Accent,
+		"muted":        &t.Muted,
+		"text":         &t.Text,
+		"text_inverse": &t.TextInverse,
+		"cursor":       &t.Cursor,
+		"border":       &t.Border,
+		"flash":        &t.Flash,
 	}
-	if v, ok := m["negative"]; ok {
-		t.Negative = lipgloss.Color(v)
-	}
-	if v, ok := m["accent"]; ok {
-		t.Accent = lipgloss.Color(v)
-	}
-	if v, ok := m["muted"]; ok {
-		t.Muted = lipgloss.Color(v)
-	}
-	if v, ok := m["text"]; ok {
-		t.Text = lipgloss.Color(v)
-	}
-	if v, ok := m["text_inverse"]; ok {
-		t.TextInverse = lipgloss.Color(v)
-	}
-	if v, ok := m["cursor"]; ok {
-		t.Cursor = lipgloss.Color(v)
-	}
-	if v, ok := m["border"]; ok {
-		t.Border = lipgloss.Color(v)
-	}
-	if v, ok := m["flash"]; ok {
-		t.Flash = lipgloss.Color(v)
+	for k, v := range m {
+		if ptr, ok := builtins[k]; ok {
+			*ptr = lipgloss.Color(v)
+		} else {
+			if t.Extra == nil {
+				t.Extra = make(map[string]lipgloss.Color)
+			}
+			t.Extra[k] = lipgloss.Color(v)
+		}
 	}
 	return t
 }
