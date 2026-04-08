@@ -1,6 +1,17 @@
 # tuikit-go
 
-A Go toolkit for building terminal UIs fast. Wraps [Bubble Tea](https://github.com/charmbracelet/bubbletea) + [Lip Gloss](https://github.com/charmbracelet/lipgloss) with reusable components, a layout engine, keybinding registry, and theme system. Build a complete TUI app in under 20 lines.
+The pragmatic TUI toolkit for shipping CLI tools fast. Wraps [Bubble Tea](https://github.com/charmbracelet/bubbletea) + [Lip Gloss](https://github.com/charmbracelet/lipgloss) with reusable components, a layout engine, a keybinding registry, a theme system, and built-in binary self-update. Build a complete TUI app in under 20 lines.
+
+## Features
+
+- Table with sorting, filtering, custom cell rendering, and mouse support
+- ListView, StatusBar, Help screen, ConfigEditor, CommandBar, DetailOverlay, CollapsibleSection
+- Dual-pane layout engine with collapsible sidebar
+- Keybinding registry with auto-generated help screen
+- Dark and light themes with semantic color tokens
+- Poller for background data with automatic tick-driven refresh
+- Utilities: Sparkline, RelativeTime, OpenURL, OSC8Link
+- **Self-update built in** — binary replacement with SHA256 checksum verification, update cache, and Homebrew/Scoop detection. No other Go TUI library ships this.
 
 ## Install
 
@@ -14,40 +25,38 @@ go get github.com/moneycaringcoder/tuikit-go
 package main
 
 import (
-	"fmt"
-	tuikit "github.com/moneycaringcoder/tuikit-go"
+    "fmt"
+    tuikit "github.com/moneycaringcoder/tuikit-go"
 )
 
 func main() {
-	table := tuikit.NewTable(
-		[]tuikit.Column{
-			{Title: "Name", Width: 20, Sortable: true},
-			{Title: "Status", Width: 15},
-		},
-		[]tuikit.Row{
-			{"Alice", "Online"},
-			{"Bob", "Away"},
-		},
-		tuikit.TableOpts{Sortable: true, Filterable: true},
-	)
+    table := tuikit.NewTable(
+        []tuikit.Column{
+            {Title: "Name", Width: 20, Sortable: true},
+            {Title: "Status", Width: 15},
+        },
+        []tuikit.Row{
+            {"Alice", "Online"},
+            {"Bob", "Away"},
+        },
+        tuikit.TableOpts{Sortable: true, Filterable: true},
+    )
 
-	app := tuikit.NewApp(
-		tuikit.WithTheme(tuikit.DefaultTheme()),
-		tuikit.WithComponent("main", table),
-		tuikit.WithStatusBar(
-			func() string { return " ? help  q quit" },
-			func() string { return fmt.Sprintf(" %d items", 2) },
-		),
-		tuikit.WithHelp(),
-	)
+    app := tuikit.NewApp(
+        tuikit.WithTheme(tuikit.DefaultTheme()),
+        tuikit.WithComponent("main", table),
+        tuikit.WithStatusBar(
+            func() string { return " ? help  q quit" },
+            func() string { return fmt.Sprintf(" %d items", 2) },
+        ),
+        tuikit.WithHelp(),
+    )
 
-	app.Run()
+    app.Run()
 }
 ```
 
-## Full Example
-
-See [`examples/dashboard/`](examples/dashboard/) for a complete app (Galactic Pizza Tracker) showing all components working together — table, sidebar, config editor, help screen, status bar.
+See [`examples/dashboard/`](examples/dashboard/) for a complete app showing all components together.
 
 ```bash
 go run ./examples/dashboard/
@@ -67,16 +76,14 @@ columns := []tuikit.Column{
 }
 
 table := tuikit.NewTable(columns, rows, tuikit.TableOpts{
-    Sortable:   true,  // 's' to cycle sort
-    Filterable: true,  // '/' to search
+    Sortable:   true, // 's' to cycle sort
+    Filterable: true, // '/' to search
 })
 
 table.SetRows(newRows) // update data dynamically
 ```
 
-#### Custom Cell Rendering
-
-Full control over per-cell styling (colors, icons, conditional formatting):
+**Custom cell rendering** — full control over per-cell styling:
 
 ```go
 tuikit.TableOpts{
@@ -90,9 +97,7 @@ tuikit.TableOpts{
 }
 ```
 
-#### Custom Sort
-
-Numeric, time-based, or any custom sort logic:
+**Custom sort** — numeric, time-based, or any logic:
 
 ```go
 tuikit.TableOpts{
@@ -105,26 +110,18 @@ tuikit.TableOpts{
 }
 ```
 
-#### Predicate Filter
-
-Filter rows programmatically alongside text search:
+**Predicate filter** — programmatic row filtering alongside text search:
 
 ```go
 table.SetFilter(func(row tuikit.Row) bool {
-    return row[1] == "online" // only show online users
+    return row[1] == "online"
 })
-table.SetFilter(nil) // clear filter
+table.SetFilter(nil) // clear
 ```
 
-#### Mouse Support
+Mouse scroll and click are handled automatically when `tuikit.WithMouseSupport()` is set.
 
-Scroll wheel and click are handled automatically when mouse is enabled:
-
-```go
-tuikit.WithMouseSupport()
-```
-
-### Status Bar
+### StatusBar
 
 Footer with left-aligned hints and right-aligned status.
 
@@ -135,15 +132,15 @@ tuikit.WithStatusBar(
 )
 ```
 
-### Help Screen
+### Help
 
-Auto-generated from all registered keybindings. Zero configuration.
+Auto-generated from all registered keybindings. Zero configuration — press `?` to toggle.
 
 ```go
-tuikit.WithHelp() // press '?' to toggle
+tuikit.WithHelp()
 ```
 
-### Config Editor
+### ConfigEditor
 
 Declarative settings overlay with grouped fields and validation.
 
@@ -154,7 +151,7 @@ editor := tuikit.NewConfigEditor([]tuikit.ConfigField{
         Group: "General",
         Hint:  "seconds, min 5",
         Get:   func() string { return fmt.Sprint(cfg.Interval) },
-        Set:   func(v string) error {
+        Set: func(v string) error {
             n, _ := strconv.Atoi(v)
             if n < 5 { return fmt.Errorf("must be >= 5") }
             cfg.Interval = n
@@ -163,91 +160,26 @@ editor := tuikit.NewConfigEditor([]tuikit.ConfigField{
     },
 })
 
-// Register as overlay with trigger key
 tuikit.WithOverlay("Settings", "c", editor) // press 'c' to open
 ```
 
-### Layout
+### CommandBar
 
-Single pane or dual pane with collapsible sidebar.
+Inline command input with completion and dispatch.
 
-```go
-tuikit.WithLayout(&tuikit.DualPane{
-    Main:         table,
-    Side:         panel,
-    SideWidth:    30,
-    MinMainWidth: 60,  // sidebar auto-hides below this
-    SideRight:    true,
-    ToggleKey:    "p",
-})
-```
+### DetailOverlay
 
-## Theming
+Full-screen detail view for a selected row or item.
 
-Built-in dark and light themes, or create your own from a color map.
+### CollapsibleSection
 
-```go
-// Built-in
-tuikit.DefaultTheme()
-tuikit.LightTheme()
+Expandable section for grouping content in a panel.
 
-// From config (YAML/JSON/TOML — you parse, we color)
-tuikit.ThemeFromMap(map[string]string{
-    "positive": "#00ff00",
-    "negative": "#ff0000",
-    "accent":   "#0000ff",
-})
-```
+### Poller
 
-Semantic tokens: `Positive`, `Negative`, `Accent`, `Muted`, `Text`, `TextInverse`, `Cursor`, `Border`, `Flash`.
+Background data polling with tick-driven refresh.
 
-## Building Custom Components
-
-Implement the `Component` interface to create your own:
-
-```go
-type Component interface {
-    Init() tea.Cmd
-    Update(msg tea.Msg) (Component, tea.Cmd)
-    View() string
-    KeyBindings() []tuikit.KeyBind
-    SetSize(width, height int)
-    Focused() bool
-    SetFocused(bool)
-}
-```
-
-Return `tuikit.Consumed()` from `Update` to signal the App that your component handled a key. The App stops dispatching to other components.
-
-To receive theme updates, implement `Themed`:
-
-```go
-type Themed interface {
-    SetTheme(tuikit.Theme)
-}
-```
-
-The App calls `SetTheme` on any component or overlay that implements this interface whenever the theme is set.
-
-For modal overlays, also implement `Overlay`:
-
-```go
-type Overlay interface {
-    Component
-    IsActive() bool
-    Close()
-}
-```
-
-Register overlays with a trigger key:
-
-```go
-tuikit.WithOverlay("Help", "?", helpOverlay)
-```
-
-## App-Level Keybindings
-
-Register global key handlers that run outside any component:
+### App-Level Keybindings
 
 ```go
 tuikit.WithKeyBind(tuikit.KeyBind{
@@ -256,16 +188,14 @@ tuikit.WithKeyBind(tuikit.KeyBind{
     Group: "DATA",
     Handler: func() {
         filterIdx = (filterIdx + 1) % len(modes)
-        table.SetRows(rows) // re-apply filter
+        table.SetRows(rows)
     },
 })
 ```
 
-These appear in the help screen automatically.
+Registered keybindings appear in the help screen automatically.
 
-## Tick / Timer Support
-
-Enable periodic ticks for animations, flash effects, and polling:
+### Tick / Timer
 
 ```go
 tuikit.WithTickInterval(100 * time.Millisecond)
@@ -273,7 +203,7 @@ tuikit.WithTickInterval(100 * time.Millisecond)
 
 Components receive `tuikit.TickMsg` in their `Update` method.
 
-## External Data (Background Goroutines)
+### External Data
 
 Push data into the app from WebSocket streams, API polling, or any goroutine:
 
@@ -289,14 +219,146 @@ app.Run()
 
 Unknown message types are forwarded to all components via `Update`.
 
-## For AI Agents
+## Utilities
 
-tuikit follows predictable patterns:
+### Sparkline
 
-- All components implement `tuikit.Component`
-- Use `tuikit.NewApp()` with functional options (`WithTheme`, `WithComponent`, `WithLayout`, etc.)
-- Key dispatch: overlay stack → built-in globals (q/tab/?) → pane toggle → overlay triggers → app keybindings → focused component
+Unicode block sparkline from a `[]float64` slice. Bars are colored by direction (up/down/neutral) or rendered mono.
+
+```go
+line, width := tuikit.Sparkline(prices, 40, &tuikit.SparklineOpts{Mono: false})
+```
+
+### RelativeTime
+
+Short human-readable duration string.
+
+```go
+tuikit.RelativeTime(event.Time, time.Now()) // "3m ago", "2h ago", "5d ago"
+```
+
+### OpenURL
+
+Opens a URL in the user's default browser. Runs asynchronously, does not block.
+
+```go
+tuikit.OpenURL("https://github.com/moneycaringcoder/tuikit-go")
+```
+
+### OSC8Link
+
+Wraps text in an OSC8 terminal hyperlink escape sequence.
+
+```go
+tuikit.OSC8Link("https://example.com", "click here")
+```
+
+## Layout & Theming
+
+### Layout
+
+Single pane or dual pane with collapsible sidebar.
+
+```go
+tuikit.WithLayout(&tuikit.DualPane{
+    Main:         table,
+    Side:         panel,
+    SideWidth:    30,
+    MinMainWidth: 60, // sidebar auto-hides below this
+    SideRight:    true,
+    ToggleKey:    "p",
+})
+```
+
+### Theming
+
+Built-in dark and light themes, or create your own from a color map.
+
+```go
+tuikit.DefaultTheme()
+tuikit.LightTheme()
+
+// From parsed config (YAML/JSON/TOML)
+tuikit.ThemeFromMap(map[string]string{
+    "positive": "#00ff00",
+    "negative": "#ff0000",
+    "accent":   "#0000ff",
+})
+```
+
+Semantic tokens: `Positive`, `Negative`, `Accent`, `Muted`, `Text`, `TextInverse`, `Cursor`, `Border`, `Flash`.
+
+Components receive theme updates automatically if they implement `Themed`:
+
+```go
+type Themed interface {
+    SetTheme(tuikit.Theme)
+}
+```
+
+## Self-Update
+
+tuikit-go ships a complete binary self-update system. No other Go TUI library includes this. It checks GitHub Releases, verifies SHA256 checksums against GoReleaser's `checksums.txt`, replaces the running binary atomically, and detects Homebrew/Scoop installs to skip auto-replace when the package manager owns the binary.
+
+### Built-in app integration
+
+Add one option to your `NewApp` call:
+
+```go
+app := tuikit.NewApp(
+    tuikit.WithAutoUpdate(tuikit.UpdateConfig{
+        Owner:      "myorg",
+        Repo:       "mytool",
+        BinaryName: "mytool",
+        Version:    version, // set via ldflags: -X main.version=v1.2.3
+        Mode:       tuikit.UpdateNotify,   // or UpdateBlocking
+        CacheTTL:   24 * time.Hour,
+    }),
+)
+```
+
+- `UpdateNotify` — shows a non-blocking banner inside the TUI after startup.
+- `UpdateBlocking` — prompts in stdout before the TUI starts.
+- Dev builds (`version == ""` or `"dev"`) are skipped automatically.
+- Results are cached to avoid hitting the GitHub API on every launch.
+
+### Manual update command
+
+Call `SelfUpdate` directly to implement an explicit `--update` flag or menu action:
+
+```go
+if err := tuikit.SelfUpdate(cfg); err != nil {
+    fmt.Fprintln(os.Stderr, "update failed:", err)
+    os.Exit(1)
+}
+```
+
+`SelfUpdate` downloads the matching release asset, verifies its checksum, extracts the binary, and replaces the running executable. Add `CleanupOldBinary()` near the top of `main()` to remove the `.old` backup left by a previous update.
+
+### Install method detection
+
+```go
+method := tuikit.DetectInstallMethod(os.Args[0])
+// InstallManual, InstallHomebrew, or InstallScoop
+```
+
+Use this to skip `SelfUpdate` when the binary is managed by a package manager.
+
+## Predictable API
+
+tuikit follows consistent patterns throughout:
+
+- All components implement `tuikit.Component` — `Init`, `Update`, `View`, `KeyBindings`, `SetSize`, `Focused`, `SetFocused`
+- App is configured via functional options: `WithTheme`, `WithComponent`, `WithLayout`, `WithAutoUpdate`, etc.
+- Key dispatch order: overlay stack → built-in globals (`q` / `tab` / `?`) → pane toggle → overlay triggers → app keybindings → focused component
+- Return `tuikit.Consumed()` from a component's `Update` to stop further dispatch
+- Modal overlays implement the `Overlay` interface and register with a trigger key via `WithOverlay`
 - See `examples/dashboard/main.go` for a complete reference
+
+## Used By
+
+- [cryptstream-tui](https://github.com/moneycaringcoder/cryptstream-tui) — Live cryptocurrency ticker
+- [gitstream-tui](https://github.com/moneycaringcoder/gitstream-tui) — GitHub activity dashboard
 
 ## Dependencies
 
@@ -305,3 +367,7 @@ Charm ecosystem only:
 - [Bubble Tea](https://github.com/charmbracelet/bubbletea) — TUI framework
 - [Lip Gloss](https://github.com/charmbracelet/lipgloss) — Styling
 - [Bubbles](https://github.com/charmbracelet/bubbles) — Component primitives
+
+## License
+
+MIT
