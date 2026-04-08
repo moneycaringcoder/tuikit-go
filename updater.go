@@ -1,6 +1,8 @@
 package tuikit
 
 import (
+	"bufio"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -179,4 +181,28 @@ func MatchChecksumAsset(assets []ReleaseAsset) (ReleaseAsset, error) {
 		}
 	}
 	return ReleaseAsset{}, fmt.Errorf("no checksums.txt asset found")
+}
+
+// VerifyChecksum verifies the SHA256 checksum of data against a GoReleaser checksums.txt file.
+// The checksums file format is: "<hex>  <filename>\n" per line.
+func VerifyChecksum(data []byte, assetName string, checksumFile []byte) error {
+	expected := ""
+	scanner := bufio.NewScanner(strings.NewReader(string(checksumFile)))
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.Fields(line)
+		if len(parts) == 2 && parts[1] == assetName {
+			expected = parts[0]
+			break
+		}
+	}
+	if expected == "" {
+		return fmt.Errorf("no checksum found for %s", assetName)
+	}
+
+	actual := fmt.Sprintf("%x", sha256.Sum256(data))
+	if actual != expected {
+		return fmt.Errorf("checksum mismatch: got %s, want %s", actual, expected)
+	}
+	return nil
 }

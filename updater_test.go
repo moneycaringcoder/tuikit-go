@@ -1,6 +1,8 @@
 package tuikit_test
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -242,5 +244,34 @@ func TestMatchChecksumAsset(t *testing.T) {
 	if got.Name != "checksums.txt" {
 		t.Errorf("Name = %q, want %q", got.Name, "checksums.txt")
 	}
+}
+
+func TestVerifyChecksum(t *testing.T) {
+	data := []byte("hello world binary content")
+	hash := sha256.Sum256(data)
+	hexHash := fmt.Sprintf("%x", hash)
+
+	checksumFile := fmt.Sprintf("%s  myapp_0.5.0_linux_amd64.tar.gz\nabc123  other_file.zip\n", hexHash)
+
+	t.Run("valid checksum", func(t *testing.T) {
+		err := tuikit.VerifyChecksum(data, "myapp_0.5.0_linux_amd64.tar.gz", []byte(checksumFile))
+		if err != nil {
+			t.Errorf("expected no error, got: %v", err)
+		}
+	})
+
+	t.Run("invalid checksum", func(t *testing.T) {
+		err := tuikit.VerifyChecksum([]byte("tampered"), "myapp_0.5.0_linux_amd64.tar.gz", []byte(checksumFile))
+		if err == nil {
+			t.Error("expected checksum mismatch error")
+		}
+	})
+
+	t.Run("missing asset in checksums", func(t *testing.T) {
+		err := tuikit.VerifyChecksum(data, "nonexistent.tar.gz", []byte(checksumFile))
+		if err == nil {
+			t.Error("expected missing asset error")
+		}
+	})
 }
 
