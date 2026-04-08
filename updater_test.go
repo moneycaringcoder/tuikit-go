@@ -42,6 +42,30 @@ func TestParseVersion(t *testing.T) {
 	}
 }
 
+func TestDetectInstallMethod(t *testing.T) {
+	tests := []struct {
+		path string
+		want tuikit.InstallMethod
+	}{
+		{"/opt/homebrew/Cellar/cryptstream/0.3.0/bin/cryptstream", tuikit.InstallHomebrew},
+		{"/home/linuxbrew/.linuxbrew/Cellar/cryptstream/0.3.0/bin/cryptstream", tuikit.InstallHomebrew},
+		{"/usr/local/Cellar/cryptstream/0.3.0/bin/cryptstream", tuikit.InstallHomebrew},
+		{`C:\Users\user\scoop\apps\cryptstream\current\cryptstream.exe`, tuikit.InstallScoop},
+		{"/usr/local/bin/cryptstream", tuikit.InstallManual},
+		{`C:\Users\user\go\bin\cryptstream.exe`, tuikit.InstallManual},
+		{"/home/user/bin/cryptstream", tuikit.InstallManual},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			got := tuikit.DetectInstallMethod(tt.path)
+			if got != tt.want {
+				t.Errorf("DetectInstallMethod(%q) = %v, want %v", tt.path, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestVersionNewerThan(t *testing.T) {
 	tests := []struct {
 		a, b string

@@ -50,3 +50,27 @@ func (v Version) NewerThan(other Version) bool {
 func (v Version) String() string {
 	return fmt.Sprintf("v%d.%d.%d", v.Major, v.Minor, v.Patch)
 }
+
+// InstallMethod describes how the binary was installed.
+type InstallMethod int
+
+const (
+	// InstallManual means the binary was installed manually or via go install.
+	InstallManual InstallMethod = iota
+	// InstallHomebrew means the binary was installed via Homebrew.
+	InstallHomebrew
+	// InstallScoop means the binary was installed via Scoop.
+	InstallScoop
+)
+
+// DetectInstallMethod inspects a binary path to determine how it was installed.
+func DetectInstallMethod(path string) InstallMethod {
+	lower := strings.ToLower(path)
+	if strings.Contains(lower, "cellar") || strings.Contains(lower, "homebrew") || strings.Contains(lower, "linuxbrew") {
+		return InstallHomebrew
+	}
+	if strings.Contains(lower, "scoop") {
+		return InstallScoop
+	}
+	return InstallManual
+}
