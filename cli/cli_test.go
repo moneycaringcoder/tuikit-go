@@ -295,3 +295,181 @@ func TestSpinnerStopDoesNotPanic(t *testing.T) {
 	s.Stop()
 	s.Stop() // idempotent — second stop must not panic
 }
+
+// --- multiselect tests ---
+
+func TestMultiSelectToggle(t *testing.T) {
+	m := newMultiSelectModel("Pick:", []string{"a", "b", "c"})
+	// Toggle first item
+	result, _ := m.Update(keyMsg(" "))
+	m = result.(multiSelectModel)
+	if !m.checked[0] {
+		t.Error("expected item 0 to be checked after space")
+	}
+	// Toggle again to uncheck
+	result, _ = m.Update(keyMsg(" "))
+	m = result.(multiSelectModel)
+	if m.checked[0] {
+		t.Error("expected item 0 to be unchecked after second space")
+	}
+}
+
+func TestMultiSelectToggleX(t *testing.T) {
+	m := newMultiSelectModel("Pick:", []string{"a", "b"})
+	result, _ := m.Update(keyMsg("x"))
+	m = result.(multiSelectModel)
+	if !m.checked[0] {
+		t.Error("expected item 0 to be checked after 'x'")
+	}
+}
+
+func TestMultiSelectToggleAll(t *testing.T) {
+	m := newMultiSelectModel("Pick:", []string{"a", "b", "c"})
+	result, _ := m.Update(keyMsg("a"))
+	m = result.(multiSelectModel)
+	for i, c := range m.checked {
+		if !c {
+			t.Errorf("expected item %d to be checked after 'a' (toggle all)", i)
+		}
+	}
+	// Toggle all again to uncheck
+	result, _ = m.Update(keyMsg("a"))
+	m = result.(multiSelectModel)
+	for i, c := range m.checked {
+		if c {
+			t.Errorf("expected item %d to be unchecked after second 'a'", i)
+		}
+	}
+}
+
+func TestMultiSelectCursorNav(t *testing.T) {
+	m := newMultiSelectModel("Pick:", []string{"a", "b", "c"})
+	result, _ := m.Update(namedKey(tea.KeyDown))
+	m = result.(multiSelectModel)
+	if m.cursor != 1 {
+		t.Errorf("cursor = %d, want 1", m.cursor)
+	}
+	result, _ = m.Update(namedKey(tea.KeyDown))
+	m = result.(multiSelectModel)
+	if m.cursor != 2 {
+		t.Errorf("cursor = %d, want 2", m.cursor)
+	}
+	// Clamp at bottom
+	result, _ = m.Update(namedKey(tea.KeyDown))
+	m = result.(multiSelectModel)
+	if m.cursor != 2 {
+		t.Errorf("cursor should clamp at 2, got %d", m.cursor)
+	}
+}
+
+func TestMultiSelectSelected(t *testing.T) {
+	m := newMultiSelectModel("Pick:", []string{"a", "b", "c"})
+	m.checked[0] = true
+	m.checked[2] = true
+
+	got := m.selected()
+	if len(got) != 2 || got[0] != "a" || got[1] != "c" {
+		t.Errorf("selected() = %v, want [a c]", got)
+	}
+	indices := m.selectedIndices()
+	if len(indices) != 2 || indices[0] != 0 || indices[1] != 2 {
+		t.Errorf("selectedIndices() = %v, want [0 2]", indices)
+	}
+}
+
+func TestMultiSelectViewContainsItems(t *testing.T) {
+	m := newMultiSelectModel("Choose:", []string{"alpha", "beta"})
+	view := m.View()
+	if !strings.Contains(view, "alpha") || !strings.Contains(view, "beta") {
+		t.Errorf("expected items in view, got: %q", view)
+	}
+	if !strings.Contains(view, "Choose:") {
+		t.Error("expected prompt in view")
+	}
+}
+
+func TestMultiSelectViewDoneShowsSelected(t *testing.T) {
+	m := newMultiSelectModel("Pick:", []string{"a", "b", "c"})
+	m.checked[1] = true
+	m.done = true
+	view := m.View()
+	if !strings.Contains(view, "b") {
+		t.Errorf("expected selected item in done view, got: %q", view)
+	}
+}
+
+func TestMultiSelectViewDoneNone(t *testing.T) {
+	m := newMultiSelectModel("Pick:", []string{"a", "b"})
+	m.done = true
+	view := m.View()
+	if !strings.Contains(view, "(none)") {
+		t.Errorf("expected '(none)' when nothing selected, got: %q", view)
+	}
+}
+
+func TestMultiSelectEmptyItems(t *testing.T) {
+	_, _, err := MultiSelect("Pick:", []string{})
+	if err == nil {
+		t.Error("expected error for empty items")
+	}
+}
+
+// --- password tests ---
+
+func TestPasswordMasked(t *testing.T) {
+	m := newPasswordModel("Secret:", nil)
+	if m.ti.EchoCharacter != '•' {
+		t.Errorf("EchoCharacter = %c, want •", m.ti.EchoCharacter)
+	}
+}
+
+func TestPasswordViewShowsMasked(t *testing.T) {
+	m := newPasswordModel("Secret:", nil)
+	m.done = true
+	m.value = "hello"
+	view := m.View()
+	if !strings.Contains(view, "•••••") {
+		t.Errorf("expected masked dots in done view, got: %q", view)
+	}
+	if strings.Contains(view, "hello") {
+		t.Error("password value should not appear in plain text")
+	}
+}
+
+func TestPasswordViewEmptyWhenCancelled(t *testing.T) {
+	m := newPasswordModel("Secret:", nil)
+	m.done = true
+	m.quitting = true
+	if m.View() != "" {
+		t.Error("expected empty view when cancelled")
+	}
+}
+
+func TestPasswordValidation(t *testing.T) {
+	minLen := func(s string) error {
+		if len(s) < 8 {
+			return errors.New("too short")
+		}
+		return nil
+	}
+	m := newPasswordModel("Password:", minLen)
+	// Simulate entering a short password
+	m.ti.SetValue("abc")
+	result, _ := m.Update(namedKey(tea.KeyEnter))
+	final := result.(passwordModel)
+	if final.done {
+		t.Error("should not be done with invalid password")
+	}
+	if final.errMsg != "too short" {
+		t.Errorf("errMsg = %q, want %q", final.errMsg, "too short")
+	}
+}
+
+func TestPasswordViewShowsError(t *testing.T) {
+	m := newPasswordModel("Pass:", nil)
+	m.errMsg = "too short"
+	view := m.View()
+	if !strings.Contains(view, "too short") {
+		t.Errorf("expected error in view, got: %q", view)
+	}
+}
