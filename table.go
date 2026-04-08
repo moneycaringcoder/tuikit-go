@@ -118,6 +118,30 @@ func (t *Table) CursorRow() Row {
 	return nil
 }
 
+// CursorIndex returns the current cursor position.
+func (t *Table) CursorIndex() int { return t.cursor }
+
+// SetCursor moves the cursor to the given index and scrolls to keep it visible.
+func (t *Table) SetCursor(idx int) {
+	t.cursor = idx
+	t.clampCursor()
+}
+
+// SetSort sets the sort column and direction, then rebuilds the view.
+// Pass col=-1 to clear sorting.
+func (t *Table) SetSort(col int, asc bool) {
+	t.sortCol = col
+	t.sortAsc = asc
+	t.rebuildVisible()
+	t.clampCursor()
+}
+
+// RowCount returns the total number of rows (before filtering).
+func (t *Table) RowCount() int { return len(t.rows) }
+
+// VisibleRowCount returns the number of rows after filtering.
+func (t *Table) VisibleRowCount() int { return len(t.visible) }
+
 func (t *Table) Init() tea.Cmd { return nil }
 
 func (t *Table) Update(msg tea.Msg) (Component, tea.Cmd) {
@@ -203,6 +227,22 @@ func (t *Table) handleKey(msg tea.KeyMsg) (Component, tea.Cmd) {
 		return t, Consumed()
 	case "end", "G":
 		t.cursor = len(t.visible) - 1
+		t.clampCursor()
+		return t, Consumed()
+	case "ctrl+d":
+		half := (t.height - 2) / 2
+		if half < 1 {
+			half = 1
+		}
+		t.cursor += half
+		t.clampCursor()
+		return t, Consumed()
+	case "ctrl+u":
+		half := (t.height - 2) / 2
+		if half < 1 {
+			half = 1
+		}
+		t.cursor -= half
 		t.clampCursor()
 		return t, Consumed()
 	case "enter":
@@ -509,6 +549,8 @@ func (t *Table) KeyBindings() []KeyBind {
 	bindings := []KeyBind{
 		{Key: "up/k", Label: "Move up", Group: "NAVIGATION"},
 		{Key: "down/j", Label: "Move down", Group: "NAVIGATION"},
+		{Key: "ctrl+u", Label: "Half page up", Group: "NAVIGATION"},
+		{Key: "ctrl+d", Label: "Half page down", Group: "NAVIGATION"},
 		{Key: "home/g", Label: "Go to top", Group: "NAVIGATION"},
 		{Key: "end/G", Label: "Go to bottom", Group: "NAVIGATION"},
 	}
