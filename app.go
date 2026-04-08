@@ -368,8 +368,10 @@ func (a *appModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return a, nil
 		}
 	case "tab", "left", "right":
-		a.cycleFocus()
-		return a, nil
+		if len(a.focusableComponents()) > 1 {
+			a.cycleFocus()
+			return a, nil
+		}
 	}
 
 	// 3. Dual pane toggle
