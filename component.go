@@ -52,6 +52,14 @@ type Overlay interface {
 	Close()
 }
 
+// InlineOverlay is an overlay that renders as a single line at the bottom
+// of the screen instead of replacing all content. The App renders the normal
+// content behind it with the overlay's View appended at the bottom.
+type InlineOverlay interface {
+	Overlay
+	Inline() bool
+}
+
 // Themed is an optional interface for components that accept a theme.
 // The App automatically calls SetTheme on any Component or Overlay that
 // implements this interface. Built-in components (Table, StatusBar, Help,

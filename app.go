@@ -369,9 +369,15 @@ func (a *appModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if overlay := a.overlays.active(); overlay != nil {
 		if key == "esc" {
 			a.overlays.pop()
+			a.resize()
 			return a, nil
 		}
 		_, cmd := overlay.Update(msg)
+		// If the overlay closed itself (e.g., CommandBar after executing), pop it
+		if !overlay.IsActive() {
+			a.overlays.stack = a.overlays.stack[:len(a.overlays.stack)-1]
+			a.resize()
+		}
 		if isConsumed(cmd) {
 			return a, nil
 		}
@@ -484,6 +490,13 @@ func (a *appModel) resize() {
 		contentHeight--
 	}
 
+	// Inline overlay takes a line at the bottom
+	if overlay := a.overlays.active(); overlay != nil {
+		if _, ok := overlay.(InlineOverlay); ok {
+			contentHeight--
+		}
+	}
+
 	compHeight := contentHeight
 	if a.showBadges() {
 		compHeight--
@@ -529,9 +542,11 @@ func (a *appModel) renderBadge(name string, focused bool) string {
 }
 
 func (a *appModel) View() string {
-	// Active overlay takes over the screen
+	// Active overlay takes over the screen (unless inline)
 	if overlay := a.overlays.active(); overlay != nil {
-		return overlay.View()
+		if _, ok := overlay.(InlineOverlay); !ok {
+			return overlay.View()
+		}
 	}
 
 	badges := a.showBadges()
@@ -586,6 +601,11 @@ func (a *appModel) View() string {
 	}
 
 	var bottom []string
+	if overlay := a.overlays.active(); overlay != nil {
+		if _, ok := overlay.(InlineOverlay); ok {
+			bottom = append(bottom, overlay.View())
+		}
+	}
 	if a.notifyMsg != "" {
 		notiStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(a.theme.TextInverse)).

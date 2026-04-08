@@ -142,7 +142,7 @@ func (c *CommandBar) View() string {
 		line = promptStyle.Render(":") + inputStyle.Render(c.input+"█")
 	}
 
-	return lipgloss.Place(c.width, c.height, lipgloss.Left, lipgloss.Bottom, line)
+	return line
 }
 
 func (c *CommandBar) KeyBindings() []KeyBind {
@@ -167,6 +167,10 @@ func (c *CommandBar) Close() {
 	c.input = ""
 	c.errMsg = ""
 }
+
+// Inline returns true — the CommandBar renders as a line at the bottom,
+// not a fullscreen overlay.
+func (c *CommandBar) Inline() bool { return true }
 
 // SetTheme implements the Themed interface.
 func (c *CommandBar) SetTheme(t Theme) { c.theme = t }
