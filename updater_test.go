@@ -1,7 +1,9 @@
 package tuikit_test
 
 import (
+	"path/filepath"
 	"testing"
+	"time"
 
 	tuikit "github.com/moneycaringcoder/tuikit-go"
 )
@@ -89,3 +91,53 @@ func TestVersionNewerThan(t *testing.T) {
 		})
 	}
 }
+
+func TestCacheWriteAndRead(t *testing.T) {
+	dir := t.TempDir()
+	cache := tuikit.UpdateCache{
+		CheckedAt:     time.Now().UTC().Truncate(time.Second),
+		LatestVersion: "v0.5.0",
+		ReleaseURL:    "https://github.com/owner/repo/releases/tag/v0.5.0",
+		ReleaseNotes:  "Bug fixes",
+	}
+
+	path := filepath.Join(dir, "update-check.json")
+	if err := tuikit.WriteCache(path, cache); err != nil {
+		t.Fatalf("WriteCache: %v", err)
+	}
+
+	got, err := tuikit.ReadCache(path)
+	if err != nil {
+		t.Fatalf("ReadCache: %v", err)
+	}
+	if got.LatestVersion != cache.LatestVersion {
+		t.Errorf("LatestVersion = %q, want %q", got.LatestVersion, cache.LatestVersion)
+	}
+	if got.ReleaseURL != cache.ReleaseURL {
+		t.Errorf("ReleaseURL = %q, want %q", got.ReleaseURL, cache.ReleaseURL)
+	}
+	if !got.CheckedAt.Equal(cache.CheckedAt) {
+		t.Errorf("CheckedAt = %v, want %v", got.CheckedAt, cache.CheckedAt)
+	}
+}
+
+func TestCacheFreshness(t *testing.T) {
+	fresh := tuikit.UpdateCache{CheckedAt: time.Now().UTC()}
+	stale := tuikit.UpdateCache{CheckedAt: time.Now().UTC().Add(-25 * time.Hour)}
+
+	ttl := 24 * time.Hour
+	if !fresh.IsFresh(ttl) {
+		t.Error("expected fresh cache to be fresh")
+	}
+	if stale.IsFresh(ttl) {
+		t.Error("expected stale cache to not be fresh")
+	}
+}
+
+func TestReadCacheMissingFile(t *testing.T) {
+	_, err := tuikit.ReadCache(filepath.Join(t.TempDir(), "nonexistent.json"))
+	if err == nil {
+		t.Error("expected error for missing file")
+	}
+}
+
