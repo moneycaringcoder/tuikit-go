@@ -102,7 +102,11 @@ func (d *DetailOverlay[T]) View() string {
 		sections = append(sections, strings.Repeat("\n", innerH+2-contentLines))
 	}
 
-	sections = append(sections, hintStyle.Render("Esc close"))
+	hints := "Esc close"
+	for _, kb := range d.opts.KeyBindings {
+		hints += "  " + kb.Key + " " + kb.Label
+	}
+	sections = append(sections, hintStyle.Render(hints))
 
 	body := strings.Join(sections, "\n")
 
