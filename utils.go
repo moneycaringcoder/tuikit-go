@@ -149,3 +149,40 @@ func Sparkline(data []float64, maxWidth int, opts *SparklineOpts) (string, int) 
 	}
 	return sb.String(), len(data)
 }
+
+// Divider renders a horizontal line of ─ characters at the given width,
+// styled with the theme's Border color.
+func Divider(width int, theme Theme) string {
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Border)).
+		Render(strings.Repeat("─", width))
+}
+
+// Truncate shortens s to maxWidth characters, appending "…" if truncated.
+// Uses visual width (lipgloss.Width) so ANSI sequences are handled correctly.
+// If s fits within maxWidth, it is returned unchanged.
+func Truncate(s string, maxWidth int) string {
+	if lipgloss.Width(s) <= maxWidth {
+		return s
+	}
+	// Strip to plain text for safe truncation, then re-measure
+	plain := strings.TrimRight(s, " ")
+	runes := []rune(plain)
+	for i := len(runes) - 1; i >= 0; i-- {
+		candidate := string(runes[:i]) + "…"
+		if lipgloss.Width(candidate) <= maxWidth {
+			return candidate
+		}
+	}
+	return "…"
+}
+
+// Badge renders a short text label with foreground color and optional bold.
+// Useful for category tags in detail bars and status displays.
+func Badge(text string, fg lipgloss.Color, bold bool) string {
+	s := lipgloss.NewStyle().Foreground(fg)
+	if bold {
+		s = s.Bold(true)
+	}
+	return s.Render(text)
+}

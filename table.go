@@ -53,16 +53,27 @@ type RowClickHandler func(row Row, rowIdx int)
 // a CellRenderer is also in use. Return nil for no row-level styling.
 type RowStyler func(row Row, idx int, isCursor bool, theme Theme) *lipgloss.Style
 
+// DetailRenderer renders a detail bar for the selected row.
+// Parameters: row data, row index, available width, theme.
+// Return a styled multi-line string. Shown below the table rows when focused.
+type DetailRenderer func(row Row, rowIdx int, width int, theme Theme) string
+
+// CursorChangeHandler is called when the cursor moves to a different row.
+type CursorChangeHandler func(row Row, rowIdx int)
+
 // TableOpts configures a Table component.
 type TableOpts struct {
-	Sortable     bool           // Enable sort cycling with 's'
-	Filterable   bool           // Enable '/' search mode
-	CursorStyle  CursorStyle   // How the cursor is rendered
-	HeaderStyle  lipgloss.Style // Override header style (zero value = use theme)
-	CellRenderer CellRenderer   // Custom cell renderer (nil = plain text)
-	RowStyler    RowStyler      // Optional full-row style (applied after cell rendering)
-	SortFunc     SortFunc       // Custom sort function (nil = lexicographic)
-	OnRowClick   RowClickHandler // Called on Enter or mouse click on a row
+	Sortable       bool              // Enable sort cycling with 's'
+	Filterable     bool              // Enable '/' search mode
+	CursorStyle    CursorStyle       // How the cursor is rendered
+	HeaderStyle    lipgloss.Style    // Override header style (zero value = use theme)
+	CellRenderer   CellRenderer      // Custom cell renderer (nil = plain text)
+	RowStyler      RowStyler         // Optional full-row style (applied after cell rendering)
+	SortFunc       SortFunc          // Custom sort function (nil = lexicographic)
+	OnRowClick     RowClickHandler   // Called on Enter or mouse click on a row
+	DetailFunc     DetailRenderer    // Renders inline detail bar for cursor row (nil = no detail bar)
+	DetailHeight   int               // Lines reserved for detail bar (default 3 when DetailFunc set)
+	OnCursorChange CursorChangeHandler // Called when cursor moves to a different row
 }
 
 // Table is an adaptive table component with sorting, filtering, and responsive columns.
@@ -86,6 +97,9 @@ type Table struct {
 
 // NewTable creates a new Table component.
 func NewTable(columns []Column, rows []Row, opts TableOpts) *Table {
+	if opts.DetailHeight == 0 && opts.DetailFunc != nil {
+		opts.DetailHeight = 3
+	}
 	t := &Table{
 		columns: columns,
 		rows:    rows,
@@ -290,6 +304,9 @@ func (t *Table) View() string {
 
 	// Rows
 	visibleRows := t.height - 2 // header + possible filter line
+	if t.opts.DetailFunc != nil {
+		visibleRows -= t.opts.DetailHeight
+	}
 	if visibleRows < 0 {
 		visibleRows = 0
 	}
@@ -306,6 +323,13 @@ func (t *Table) View() string {
 	if t.filtering && len(lines) > 0 {
 		filterStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.theme.Accent))
 		lines[len(lines)-1] = filterStyle.Render(fmt.Sprintf(" / %s█", t.filterQuery))
+	}
+
+	// Detail bar
+	if t.opts.DetailFunc != nil {
+		detail := t.renderDetail()
+		detailLines := strings.Split(detail, "\n")
+		lines = append(lines, detailLines...)
 	}
 
 	// Pad to exactly t.height lines so JoinHorizontal with a separator
@@ -584,6 +608,7 @@ func (t *Table) cycleSort() {
 }
 
 func (t *Table) clampCursor() {
+	prev := t.cursor
 	if t.cursor < 0 {
 		t.cursor = 0
 	}
@@ -595,7 +620,14 @@ func (t *Table) clampCursor() {
 		t.cursor = maxCursor
 	}
 
+	if t.cursor != prev && t.opts.OnCursorChange != nil && t.cursor < len(t.visible) {
+		t.opts.OnCursorChange(t.visible[t.cursor], t.cursor)
+	}
+
 	visibleRows := t.height - 2
+	if t.opts.DetailFunc != nil {
+		visibleRows -= t.opts.DetailHeight
+	}
 	if visibleRows < 1 {
 		visibleRows = 1
 	}
@@ -605,6 +637,20 @@ func (t *Table) clampCursor() {
 	if t.cursor >= t.offset+visibleRows {
 		t.offset = t.cursor - visibleRows + 1
 	}
+}
+
+func (t *Table) renderDetail() string {
+	if t.focused {
+		if row := t.CursorRow(); row != nil {
+			detail := t.opts.DetailFunc(row, t.cursor, t.width, t.theme)
+			if detail != "" {
+				return detail
+			}
+		}
+	}
+	// Reserve blank space to prevent jitter
+	blank := strings.Repeat("\n", t.opts.DetailHeight-1)
+	return strings.Repeat(" ", t.width) + blank
 }
 
 func (t *Table) KeyBindings() []KeyBind {
