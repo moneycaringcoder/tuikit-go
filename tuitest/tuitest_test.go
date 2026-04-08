@@ -1,38 +1,157 @@
 package tuitest_test
 
 import (
+	"flag"
 	"fmt"
 	"os"
+	"strings"
+	"sync"
 	"testing"
 	"time"
+	"unicode"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/moneycaringcoder/tuikit-go/tuitest"
 )
 
+// ── test reporter ──────────────────────────────────────────────────────────
+
+var (
+	passIcon = lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Render("✓")
+	failIcon = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render("✗")
+	dimText  = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	boldText = lipgloss.NewStyle().Bold(true)
+	greenBg  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("82"))
+	redBg    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196"))
+	accent   = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
+)
+
+type result struct {
+	name    string
+	group   string
+	passed  bool
+	elapsed time.Duration
+}
+
+var (
+	tracker   []result
+	trackerMu sync.Mutex
+)
+
+func track(t *testing.T) {
+	start := time.Now()
+	t.Cleanup(func() {
+		trackerMu.Lock()
+		defer trackerMu.Unlock()
+		name := t.Name()
+		group, short := splitTestName(name)
+		tracker = append(tracker, result{
+			name:    short,
+			group:   group,
+			passed:  !t.Failed(),
+			elapsed: time.Since(start),
+		})
+	})
+}
+
+// splitTestName turns "TestScreenPlainText" into ("Screen", "PlainText").
+func splitTestName(name string) (string, string) {
+	name = strings.TrimPrefix(name, "Test")
+	for i := 1; i < len(name); i++ {
+		if unicode.IsUpper(rune(name[i])) {
+			prefix := name[:i]
+			// Known groups — keep multi-word prefixes together.
+			switch prefix {
+			case "Screen", "Region", "Assert", "Golden", "Test":
+				rest := name[i:]
+				if prefix == "Test" {
+					prefix = "TestModel"
+					rest = strings.TrimPrefix(rest, "Model")
+				}
+				return prefix, rest
+			}
+		}
+	}
+	return "", name
+}
+
 func TestMain(m *testing.M) {
-	fmt.Println()
-	fmt.Println("  ┌──────────────────────────────────┐")
-	fmt.Println("  │  tuitest · terminal test toolkit  │")
-	fmt.Println("  └──────────────────────────────────┘")
-	fmt.Println()
+	flag.Parse()
+
+	// When -v is set, suppress Go's default === RUN / --- PASS output
+	// by redirecting stdout to /dev/null during test execution.
+	// Our report prints to stderr, bypassing the redirect.
+	verbose := testing.Verbose()
+	if verbose {
+		origStdout := os.Stdout
+		devNull, err := os.Open(os.DevNull)
+		if err == nil {
+			os.Stdout = devNull
+			defer func() {
+				os.Stdout = origStdout
+				devNull.Close()
+			}()
+		}
+	}
 
 	start := time.Now()
 	code := m.Run()
 	elapsed := time.Since(start)
 
-	fmt.Println()
-	if code == 0 {
-		fmt.Printf("  ✓ all tests passed in %dms\n", elapsed.Milliseconds())
-	} else {
-		fmt.Printf("  ✗ tests failed in %dms\n", elapsed.Milliseconds())
+	w := os.Stderr
+
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "  "+accent.Render("tuitest")+" "+dimText.Render("· terminal test toolkit"))
+	fmt.Fprintln(w)
+
+	trackerMu.Lock()
+	results := tracker
+	trackerMu.Unlock()
+
+	passed, failed := 0, 0
+	currentGroup := ""
+	for _, r := range results {
+		if r.group != currentGroup {
+			currentGroup = r.group
+			fmt.Fprintln(w, "  "+boldText.Render(currentGroup))
+		}
+		icon := passIcon
+		if !r.passed {
+			icon = failIcon
+			failed++
+		} else {
+			passed++
+		}
+		ms := fmt.Sprintf("%.3fms", float64(r.elapsed.Microseconds())/1000.0)
+		fmt.Fprintf(w, "    %s %s %s\n", icon, r.name, dimText.Render(ms))
 	}
-	fmt.Println()
+
+	fmt.Fprintln(w)
+	total := passed + failed
+	if failed == 0 {
+		fmt.Fprintf(w, "  %s %s %s\n",
+			greenBg.Render("PASS"),
+			boldText.Render(fmt.Sprintf("%d tests", total)),
+			dimText.Render(fmt.Sprintf("(%dms)", elapsed.Milliseconds())),
+		)
+	} else {
+		fmt.Fprintf(w, "  %s %s, %s %s\n",
+			redBg.Render("FAIL"),
+			boldText.Render(fmt.Sprintf("%d failed", failed)),
+			dimText.Render(fmt.Sprintf("%d passed", passed)),
+			dimText.Render(fmt.Sprintf("(%dms)", elapsed.Milliseconds())),
+		)
+	}
+	fmt.Fprintln(w)
 
 	os.Exit(code)
 }
 
+// ── Screen tests ───────────────────────────────────────────────────────────
+
 func TestScreenPlainText(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Hello, World!")
 
@@ -45,6 +164,7 @@ func TestScreenPlainText(t *testing.T) {
 }
 
 func TestScreenMultipleLines(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Line 1\nLine 2\nLine 3")
 
@@ -65,6 +185,7 @@ func TestScreenMultipleLines(t *testing.T) {
 }
 
 func TestScreenTextAt(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Hello, World!")
 
@@ -77,23 +198,23 @@ func TestScreenTextAt(t *testing.T) {
 }
 
 func TestScreenTextAtBounds(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("test")
 
-	// Out-of-bounds row
 	if got := s.TextAt(-1, 0, 5); got != "" {
 		t.Errorf("TextAt(-1, 0, 5) = %q, want empty", got)
 	}
 	if got := s.TextAt(10, 0, 5); got != "" {
 		t.Errorf("TextAt(10, 0, 5) = %q, want empty", got)
 	}
-	// startCol >= endCol
 	if got := s.TextAt(0, 5, 3); got != "" {
 		t.Errorf("TextAt(0, 5, 3) = %q, want empty", got)
 	}
 }
 
 func TestScreenContains(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Hello, World!\nSecond line here")
 
@@ -109,6 +230,7 @@ func TestScreenContains(t *testing.T) {
 }
 
 func TestScreenContainsAt(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Hello, World!")
 
@@ -124,6 +246,7 @@ func TestScreenContainsAt(t *testing.T) {
 }
 
 func TestScreenCursorPos(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Hi")
 
@@ -134,6 +257,7 @@ func TestScreenCursorPos(t *testing.T) {
 }
 
 func TestScreenString(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(20, 3)
 	s.Render("Row 0\nRow 1\nRow 2")
 
@@ -145,15 +269,14 @@ func TestScreenString(t *testing.T) {
 }
 
 func TestScreenStyleBold(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
-	// ESC[1m = bold, ESC[0m = reset
 	s.Render("\x1b[1mBold\x1b[0m Normal")
 
 	style := s.StyleAt(0, 0)
 	if !style.Bold {
 		t.Error("expected bold at (0, 0)")
 	}
-
 	style = s.StyleAt(0, 5)
 	if style.Bold {
 		t.Error("expected non-bold at (0, 5)")
@@ -161,16 +284,14 @@ func TestScreenStyleBold(t *testing.T) {
 }
 
 func TestScreenStyleFgColor(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
-	// ESC[31m = red foreground
 	s.Render("\x1b[31mRed\x1b[0m")
 
 	style := s.StyleAt(0, 0)
 	if style.Fg != "red" {
 		t.Errorf("Fg = %q, want %q", style.Fg, "red")
 	}
-
-	// After reset, default color
 	style = s.StyleAt(0, 3)
 	if style.Fg != "" {
 		t.Errorf("Fg after reset = %q, want empty", style.Fg)
@@ -178,8 +299,8 @@ func TestScreenStyleFgColor(t *testing.T) {
 }
 
 func TestScreenStyleBgColor(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
-	// ESC[44m = blue background
 	s.Render("\x1b[44mBlue\x1b[0m")
 
 	style := s.StyleAt(0, 0)
@@ -189,8 +310,8 @@ func TestScreenStyleBgColor(t *testing.T) {
 }
 
 func TestScreenStyleItalicUnderline(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
-	// ESC[3m = italic, ESC[4m = underline
 	s.Render("\x1b[3;4mStyled\x1b[0m")
 
 	style := s.StyleAt(0, 0)
@@ -203,6 +324,7 @@ func TestScreenStyleItalicUnderline(t *testing.T) {
 }
 
 func TestScreenStyleAtOutOfBounds(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(10, 5)
 	s.Render("test")
 
@@ -217,6 +339,7 @@ func TestScreenStyleAtOutOfBounds(t *testing.T) {
 }
 
 func TestScreenRenderOverwrites(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("First render")
 	s.Render("Second")
@@ -229,7 +352,10 @@ func TestScreenRenderOverwrites(t *testing.T) {
 	}
 }
 
+// ── Region tests ───────────────────────────────────────────────────────────
+
 func TestRegionContains(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("AAAA BBBB\nCCCC DDDD\nEEEE FFFF")
 
@@ -246,6 +372,7 @@ func TestRegionContains(t *testing.T) {
 }
 
 func TestRegionRow(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("AAAA BBBB\nCCCC DDDD")
 
@@ -259,6 +386,7 @@ func TestRegionRow(t *testing.T) {
 }
 
 func TestRegionRowOutOfBounds(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("test")
 
@@ -272,6 +400,7 @@ func TestRegionRowOutOfBounds(t *testing.T) {
 }
 
 func TestRegionString(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 3)
 	s.Render("AB CD\nEF GH")
 
@@ -283,7 +412,7 @@ func TestRegionString(t *testing.T) {
 	}
 }
 
-// Assert helper tests use a custom TB that records failures.
+// ── Assert tests ───────────────────────────────────────────────────────────
 
 type fakeTB struct {
 	testing.TB
@@ -297,6 +426,7 @@ func (f *fakeTB) Fatalf(format string, a ...any) { f.failed = true }
 func (f *fakeTB) Logf(format string, a ...any)   {}
 
 func TestAssertContainsPass(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Hello, World!")
 
@@ -308,6 +438,7 @@ func TestAssertContainsPass(t *testing.T) {
 }
 
 func TestAssertContainsFail(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Hello, World!")
 
@@ -319,6 +450,7 @@ func TestAssertContainsFail(t *testing.T) {
 }
 
 func TestAssertContainsAtPass(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Hello")
 
@@ -330,6 +462,7 @@ func TestAssertContainsAtPass(t *testing.T) {
 }
 
 func TestAssertContainsAtFail(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Hello")
 
@@ -341,6 +474,7 @@ func TestAssertContainsAtFail(t *testing.T) {
 }
 
 func TestAssertNotContainsPass(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Hello")
 
@@ -352,6 +486,7 @@ func TestAssertNotContainsPass(t *testing.T) {
 }
 
 func TestAssertNotContainsFail(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Hello")
 
@@ -363,6 +498,7 @@ func TestAssertNotContainsFail(t *testing.T) {
 }
 
 func TestAssertCursorAtPass(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Hi")
 
@@ -374,6 +510,7 @@ func TestAssertCursorAtPass(t *testing.T) {
 }
 
 func TestAssertCursorAtFail(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Hi")
 
@@ -385,6 +522,7 @@ func TestAssertCursorAtFail(t *testing.T) {
 }
 
 func TestAssertStyleAtPass(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("\x1b[1mBold\x1b[0m")
 
@@ -396,6 +534,7 @@ func TestAssertStyleAtPass(t *testing.T) {
 }
 
 func TestAssertStyleAtFail(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Normal")
 
@@ -407,6 +546,7 @@ func TestAssertStyleAtFail(t *testing.T) {
 }
 
 func TestAssertBoldAtPass(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("\x1b[1mBold\x1b[0m")
 
@@ -418,6 +558,7 @@ func TestAssertBoldAtPass(t *testing.T) {
 }
 
 func TestAssertBoldAtFail(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Normal")
 
@@ -429,6 +570,7 @@ func TestAssertBoldAtFail(t *testing.T) {
 }
 
 func TestAssertRowContainsPass(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Hello, World!\nSecond line")
 
@@ -440,6 +582,7 @@ func TestAssertRowContainsPass(t *testing.T) {
 }
 
 func TestAssertRowContainsFail(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(40, 5)
 	s.Render("Hello, World!")
 
@@ -450,11 +593,13 @@ func TestAssertRowContainsFail(t *testing.T) {
 	}
 }
 
+// ── Golden tests ───────────────────────────────────────────────────────────
+
 func TestGoldenCreateAndCompare(t *testing.T) {
+	track(t)
 	s := tuitest.NewScreen(20, 3)
 	s.Render("Golden test\nLine 2")
 
-	// Verify String() output is deterministic, which is the foundation of golden files.
 	first := s.String()
 	second := s.String()
 	if first != second {
@@ -462,7 +607,8 @@ func TestGoldenCreateAndCompare(t *testing.T) {
 	}
 }
 
-// stubModel is a minimal Bubble Tea model for testing TestModel.
+// ── TestModel tests ────────────────────────────────────────────────────────
+
 type stubModel struct {
 	text   string
 	width  int
@@ -494,6 +640,7 @@ func (m stubModel) View() string {
 }
 
 func TestTestModelScreen(t *testing.T) {
+	track(t)
 	tm := tuitest.NewTestModel(t, stubModel{}, 40, 5)
 	scr := tm.Screen()
 
@@ -503,6 +650,7 @@ func TestTestModelScreen(t *testing.T) {
 }
 
 func TestTestModelSendKey(t *testing.T) {
+	track(t)
 	tm := tuitest.NewTestModel(t, stubModel{}, 40, 5)
 	tm.SendKey("a")
 
@@ -513,6 +661,7 @@ func TestTestModelSendKey(t *testing.T) {
 }
 
 func TestTestModelType(t *testing.T) {
+	track(t)
 	tm := tuitest.NewTestModel(t, stubModel{}, 40, 5)
 	tm.Type("aaa")
 
@@ -523,10 +672,10 @@ func TestTestModelType(t *testing.T) {
 }
 
 func TestTestModelSendResize(t *testing.T) {
+	track(t)
 	tm := tuitest.NewTestModel(t, stubModel{}, 40, 5)
 	tm.SendResize(80, 24)
 
-	// Verify model received the resize
 	m := tm.Model().(stubModel)
 	if m.width != 80 || m.height != 24 {
 		t.Errorf("model size = (%d, %d), want (80, 24)", m.width, m.height)
@@ -534,6 +683,7 @@ func TestTestModelSendResize(t *testing.T) {
 }
 
 func TestTestModelReturnsTea(t *testing.T) {
+	track(t)
 	tm := tuitest.NewTestModel(t, stubModel{}, 40, 5)
 	m := tm.Model()
 	if _, ok := m.(stubModel); !ok {
