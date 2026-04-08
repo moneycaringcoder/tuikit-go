@@ -72,6 +72,12 @@ func WithTickInterval(d time.Duration) Option {
 	return func(a *appModel) { a.tickInterval = d }
 }
 
+// WithFocusCycleKey changes the key used to cycle focus between panes.
+// Default is "tab". Set to "" to disable focus cycling entirely.
+func WithFocusCycleKey(key string) Option {
+	return func(a *appModel) { a.focusCycleKey = key }
+}
+
 // TickMsg is sent to all components at the configured tick interval.
 // Use it for animations, countdowns, polling, and flash effects.
 type TickMsg struct {
@@ -103,6 +109,7 @@ type appModel struct {
 	globalBindings []KeyBind
 	mouseSupport   bool
 	tickInterval   time.Duration
+	focusCycleKey  string
 	focusIdx       int
 	width          int
 	height         int
@@ -115,9 +122,10 @@ type appModel struct {
 // newAppModel creates an appModel for testing (does not start tea.Program).
 func newAppModel(opts ...Option) *appModel {
 	a := &appModel{
-		theme:    DefaultTheme(),
-		overlays: newOverlayStack(),
-		registry: newRegistry(),
+		theme:         DefaultTheme(),
+		overlays:      newOverlayStack(),
+		registry:      newRegistry(),
+		focusCycleKey: "tab",
 	}
 	for _, opt := range opts {
 		opt(a)
@@ -401,8 +409,13 @@ func (a *appModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			a.overlays.push(a.help)
 			return a, nil
 		}
-	case "tab", "left", "right":
+	case "left", "right":
 		if len(a.focusableComponents()) > 1 {
+			a.cycleFocus()
+			return a, nil
+		}
+	default:
+		if a.focusCycleKey != "" && key == a.focusCycleKey && len(a.focusableComponents()) > 1 {
 			a.cycleFocus()
 			return a, nil
 		}
