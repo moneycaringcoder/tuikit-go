@@ -42,3 +42,63 @@ func (r *Region) String() string {
 	}
 	return b.String()
 }
+
+// RowCount returns the number of non-empty rows in the region.
+func (r *Region) RowCount() int {
+	count := 0
+	for i := 0; i < r.height; i++ {
+		if r.Row(i) != "" {
+			count++
+		}
+	}
+	return count
+}
+
+// IsEmpty reports whether the region has no visible text.
+func (r *Region) IsEmpty() bool {
+	return r.RowCount() == 0
+}
+
+// FindText returns the (relativeRow, relativeCol) of the first occurrence
+// of text within the region. Returns (-1, -1) if not found.
+func (r *Region) FindText(text string) (row, col int) {
+	for i := 0; i < r.height; i++ {
+		rowText := r.Row(i)
+		if idx := strings.Index(rowText, text); idx >= 0 {
+			return i, idx
+		}
+	}
+	return -1, -1
+}
+
+// StyleAt returns the cell style at the given region-relative coordinates.
+func (r *Region) StyleAt(row, col int) CellStyle {
+	return r.screen.StyleAt(r.row+row, r.col+col)
+}
+
+// AllRows returns all row strings in the region.
+func (r *Region) AllRows() []string {
+	rows := make([]string, r.height)
+	for i := 0; i < r.height; i++ {
+		rows[i] = r.Row(i)
+	}
+	return rows
+}
+
+// CountOccurrences returns how many times text appears in the region.
+func (r *Region) CountOccurrences(text string) int {
+	count := 0
+	for i := 0; i < r.height; i++ {
+		rowText := r.Row(i)
+		offset := 0
+		for {
+			idx := strings.Index(rowText[offset:], text)
+			if idx < 0 {
+				break
+			}
+			count++
+			offset += idx + len(text)
+		}
+	}
+	return count
+}

@@ -5,6 +5,7 @@
 package tuitest
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/rcarmo/go-te/pkg/te"
@@ -133,6 +134,143 @@ func (s *Screen) Region(row, col, width, height int) *Region {
 		width:  width,
 		height: height,
 	}
+}
+
+// FindText returns the (row, col) of the first occurrence of text on the screen.
+// Returns (-1, -1) if not found.
+func (s *Screen) FindText(text string) (row, col int) {
+	for r := 0; r < s.lines; r++ {
+		rowText := s.TextAt(r, 0, s.cols)
+		if idx := strings.Index(rowText, text); idx >= 0 {
+			return r, idx
+		}
+	}
+	return -1, -1
+}
+
+// FindAllText returns all (row, col) positions where text appears.
+func (s *Screen) FindAllText(text string) [][2]int {
+	var results [][2]int
+	for r := 0; r < s.lines; r++ {
+		rowText := s.TextAt(r, 0, s.cols)
+		offset := 0
+		for {
+			idx := strings.Index(rowText[offset:], text)
+			if idx < 0 {
+				break
+			}
+			results = append(results, [2]int{r, offset + idx})
+			offset += idx + len(text)
+		}
+	}
+	return results
+}
+
+// RowCount returns the number of non-empty rows on screen.
+func (s *Screen) RowCount() int {
+	count := 0
+	for r := 0; r < s.lines; r++ {
+		if s.Row(r) != "" {
+			count++
+		}
+	}
+	return count
+}
+
+// AllRows returns all row strings (including empty ones).
+func (s *Screen) AllRows() []string {
+	rows := make([]string, s.lines)
+	for r := 0; r < s.lines; r++ {
+		rows[r] = s.Row(r)
+	}
+	return rows
+}
+
+// NonEmptyRows returns only the non-empty rows with their row indices.
+func (s *Screen) NonEmptyRows() []IndexedRow {
+	var rows []IndexedRow
+	for r := 0; r < s.lines; r++ {
+		text := s.Row(r)
+		if text != "" {
+			rows = append(rows, IndexedRow{Index: r, Text: text})
+		}
+	}
+	return rows
+}
+
+// IndexedRow pairs a row index with its text content.
+type IndexedRow struct {
+	Index int
+	Text  string
+}
+
+// Column extracts a vertical column of text from startRow to endRow (exclusive).
+func (s *Screen) Column(col, startRow, endRow int) string {
+	if col < 0 || col >= s.cols {
+		return ""
+	}
+	var b strings.Builder
+	for r := startRow; r < endRow && r < s.lines; r++ {
+		if r > startRow {
+			b.WriteByte('\n')
+		}
+		ch := s.TextAt(r, col, col+1)
+		b.WriteString(ch)
+	}
+	return b.String()
+}
+
+// IsEmpty reports whether the screen has no visible text content.
+func (s *Screen) IsEmpty() bool {
+	return s.RowCount() == 0
+}
+
+// Size returns the screen dimensions as (cols, lines).
+func (s *Screen) Size() (cols, lines int) {
+	return s.cols, s.lines
+}
+
+// CountOccurrences returns how many times text appears on the screen.
+func (s *Screen) CountOccurrences(text string) int {
+	count := 0
+	for r := 0; r < s.lines; r++ {
+		rowText := s.TextAt(r, 0, s.cols)
+		offset := 0
+		for {
+			idx := strings.Index(rowText[offset:], text)
+			if idx < 0 {
+				break
+			}
+			count++
+			offset += idx + len(text)
+		}
+	}
+	return count
+}
+
+// MatchesRegexp reports whether the screen content matches the regular expression.
+func (s *Screen) MatchesRegexp(pattern string) bool {
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return false
+	}
+	return re.MatchString(s.String())
+}
+
+// FindRegexp returns the (row, col) of the first regexp match. Returns (-1, -1) if not found.
+func (s *Screen) FindRegexp(pattern string) (row, col int) {
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return -1, -1
+	}
+	for r := 0; r < s.lines; r++ {
+		rowText := s.TextAt(r, 0, s.cols)
+		loc := re.FindStringIndex(rowText)
+		if loc != nil {
+			return r, loc[0]
+		}
+	}
+	return -1, -1
 }
 
 // String returns a plain text representation of the entire screen (for debugging/golden files).
