@@ -293,9 +293,11 @@ func (l *ListView[T]) rebuildContent() {
 	}
 
 	now := time.Now()
-	cursorStyle := lipgloss.NewStyle().
+	cursorMarker := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(l.theme.Accent)).
 		Bold(true)
+	cursorBg := lipgloss.NewStyle().
+		Background(lipgloss.Color(l.theme.Cursor))
 	flashStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(l.theme.Flash)).
 		Bold(true)
@@ -306,7 +308,12 @@ func (l *ListView[T]) rebuildContent() {
 		line := l.opts.RenderItem(item, i, isCursor, l.theme)
 
 		if isCursor {
-			line = cursorStyle.Render("▌") + " " + line
+			line = cursorMarker.Render("▌") + " " + cursorBg.Render(line)
+			// Pad to full width with cursor background
+			vis := lipgloss.Width(line)
+			if vis < l.width {
+				line += cursorBg.Render(strings.Repeat(" ", l.width-vis))
+			}
 		} else if l.opts.FlashFunc != nil && l.opts.FlashFunc(item, now) {
 			line = flashStyle.Render("▐") + " " + line
 		} else {

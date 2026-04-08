@@ -39,6 +39,12 @@ func OSC8Link(url, text string) string {
 	return fmt.Sprintf("\x1b]8;;%s\x1b\\%s\x1b]8;;\x1b\\", url, text)
 }
 
+// Hyperlink is an alias for OSC8Link — wraps text in a clickable terminal hyperlink.
+// Supported in modern terminals (iTerm2, Kitty, WezTerm, Windows Terminal, etc.).
+func Hyperlink(url, text string) string {
+	return OSC8Link(url, text)
+}
+
 // OpenURL opens a URL in the user's default browser.
 // It runs the command asynchronously and does not block.
 func OpenURL(url string) {
@@ -142,4 +148,41 @@ func Sparkline(data []float64, maxWidth int, opts *SparklineOpts) (string, int) 
 		}
 	}
 	return sb.String(), len(data)
+}
+
+// Divider renders a horizontal line of ─ characters at the given width,
+// styled with the theme's Border color.
+func Divider(width int, theme Theme) string {
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Border)).
+		Render(strings.Repeat("─", width))
+}
+
+// Truncate shortens s to maxWidth characters, appending "…" if truncated.
+// Uses visual width (lipgloss.Width) so ANSI sequences are handled correctly.
+// If s fits within maxWidth, it is returned unchanged.
+func Truncate(s string, maxWidth int) string {
+	if lipgloss.Width(s) <= maxWidth {
+		return s
+	}
+	// Strip to plain text for safe truncation, then re-measure
+	plain := strings.TrimRight(s, " ")
+	runes := []rune(plain)
+	for i := len(runes) - 1; i >= 0; i-- {
+		candidate := string(runes[:i]) + "…"
+		if lipgloss.Width(candidate) <= maxWidth {
+			return candidate
+		}
+	}
+	return "…"
+}
+
+// Badge renders a short text label with foreground color and optional bold.
+// Useful for category tags in detail bars and status displays.
+func Badge(text string, fg lipgloss.Color, bold bool) string {
+	s := lipgloss.NewStyle().Foreground(fg)
+	if bold {
+		s = s.Bold(true)
+	}
+	return s.Render(text)
 }

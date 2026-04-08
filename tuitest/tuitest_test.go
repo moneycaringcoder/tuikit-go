@@ -421,8 +421,11 @@ type fakeTB struct {
 }
 
 func (f *fakeTB) Helper()                       {}
+func (f *fakeTB) Error(a ...any)                 { f.failed = true }
 func (f *fakeTB) Errorf(format string, a ...any) { f.failed = true }
+func (f *fakeTB) Fatal(a ...any)                 { f.failed = true }
 func (f *fakeTB) Fatalf(format string, a ...any) { f.failed = true }
+func (f *fakeTB) Log(a ...any)                   {}
 func (f *fakeTB) Logf(format string, a ...any)   {}
 
 func TestAssertContainsPass(t *testing.T) {
@@ -688,5 +691,732 @@ func TestTestModelReturnsTea(t *testing.T) {
 	m := tm.Model()
 	if _, ok := m.(stubModel); !ok {
 		t.Error("Model() should return the underlying stubModel")
+	}
+}
+
+func TestTestModelSendKeys(t *testing.T) {
+	track(t)
+	tm := tuitest.NewTestModel(t, stubModel{}, 40, 5)
+	tm.SendKeys("a", "a", "a")
+
+	scr := tm.Screen()
+	if !scr.Contains("aaa") {
+		t.Error("screen should contain 'aaa' after SendKeys")
+	}
+}
+
+func TestTestModelSendMsg(t *testing.T) {
+	track(t)
+	tm := tuitest.NewTestModel(t, stubModel{}, 40, 5)
+	tm.SendMsg(tea.WindowSizeMsg{Width: 100, Height: 50})
+
+	m := tm.Model().(stubModel)
+	if m.width != 100 || m.height != 50 {
+		t.Errorf("model size = (%d, %d), want (100, 50)", m.width, m.height)
+	}
+}
+
+func TestTestModelColsLines(t *testing.T) {
+	track(t)
+	tm := tuitest.NewTestModel(t, stubModel{}, 80, 24)
+	if tm.Cols() != 80 {
+		t.Errorf("Cols() = %d, want 80", tm.Cols())
+	}
+	if tm.Lines() != 24 {
+		t.Errorf("Lines() = %d, want 24", tm.Lines())
+	}
+}
+
+func TestTestModelRequireScreen(t *testing.T) {
+	track(t)
+	tm := tuitest.NewTestModel(t, stubModel{}, 40, 5)
+
+	called := false
+	tm.RequireScreen(func(tb testing.TB, s *tuitest.Screen) {
+		called = true
+		if !s.Contains("empty") {
+			tb.Error("expected 'empty'")
+		}
+	})
+	if !called {
+		t.Error("RequireScreen callback was not invoked")
+	}
+}
+
+func TestTestModelWaitFor(t *testing.T) {
+	track(t)
+	tm := tuitest.NewTestModel(t, stubModel{}, 40, 5)
+	// Screen starts with "empty", so UntilContains("empty") should succeed immediately.
+	ok := tm.WaitFor(tuitest.UntilContains("empty"), 5)
+	if !ok {
+		t.Error("WaitFor(UntilContains) should succeed for existing text")
+	}
+}
+
+func TestTestModelWaitForTimeout(t *testing.T) {
+	track(t)
+	tm := tuitest.NewTestModel(t, stubModel{}, 40, 5)
+	ok := tm.WaitFor(tuitest.UntilContains("never-here"), 3)
+	if ok {
+		t.Error("WaitFor should return false when text never appears")
+	}
+}
+
+// ── Screen extended tests ─────────────────────────────────────────────────
+
+func TestScreenFindText(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("Hello\nWorld\nFoo Bar")
+
+	row, col := s.FindText("World")
+	if row != 1 || col != 0 {
+		t.Errorf("FindText(World) = (%d, %d), want (1, 0)", row, col)
+	}
+
+	row, col = s.FindText("Bar")
+	if row != 2 || col != 4 {
+		t.Errorf("FindText(Bar) = (%d, %d), want (2, 4)", row, col)
+	}
+
+	row, col = s.FindText("Missing")
+	if row != -1 || col != -1 {
+		t.Errorf("FindText(Missing) = (%d, %d), want (-1, -1)", row, col)
+	}
+}
+
+func TestScreenFindAllText(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("ab ab\nab")
+
+	results := s.FindAllText("ab")
+	if len(results) != 3 {
+		t.Errorf("FindAllText(ab) found %d, want 3", len(results))
+	}
+}
+
+func TestScreenRowCount(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("Line 1\nLine 2\nLine 3")
+
+	if got := s.RowCount(); got != 3 {
+		t.Errorf("RowCount() = %d, want 3", got)
+	}
+}
+
+func TestScreenAllRows(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 3)
+	s.Render("A\nB\nC")
+
+	rows := s.AllRows()
+	if len(rows) != 3 {
+		t.Fatalf("AllRows() len = %d, want 3", len(rows))
+	}
+	if rows[0] != "A" || rows[1] != "B" || rows[2] != "C" {
+		t.Errorf("AllRows() = %v, want [A B C]", rows)
+	}
+}
+
+func TestScreenNonEmptyRows(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("A\n\nC")
+
+	rows := s.NonEmptyRows()
+	if len(rows) != 2 {
+		t.Fatalf("NonEmptyRows() len = %d, want 2", len(rows))
+	}
+	if rows[0].Index != 0 || rows[0].Text != "A" {
+		t.Errorf("NonEmptyRows[0] = %+v, want {0, A}", rows[0])
+	}
+	if rows[1].Index != 2 || rows[1].Text != "C" {
+		t.Errorf("NonEmptyRows[1] = %+v, want {2, C}", rows[1])
+	}
+}
+
+func TestScreenColumn(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 3)
+	s.Render("ABC\nDEF\nGHI")
+
+	col := s.Column(1, 0, 3)
+	if col != "B\nE\nH" {
+		t.Errorf("Column(1, 0, 3) = %q, want %q", col, "B\nE\nH")
+	}
+}
+
+func TestScreenIsEmpty(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("")
+	if !s.IsEmpty() {
+		t.Error("IsEmpty() should be true for blank screen")
+	}
+
+	s.Render("text")
+	if s.IsEmpty() {
+		t.Error("IsEmpty() should be false for non-blank screen")
+	}
+}
+
+func TestScreenCountOccurrences(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("aa aa\naa")
+
+	if got := s.CountOccurrences("aa"); got != 3 {
+		t.Errorf("CountOccurrences(aa) = %d, want 3", got)
+	}
+	if got := s.CountOccurrences("zz"); got != 0 {
+		t.Errorf("CountOccurrences(zz) = %d, want 0", got)
+	}
+}
+
+func TestScreenMatchesRegexp(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("Error: 404 not found")
+
+	if !s.MatchesRegexp(`\d{3}`) {
+		t.Error("MatchesRegexp should find 3-digit number")
+	}
+	if s.MatchesRegexp(`\d{5}`) {
+		t.Error("MatchesRegexp should not find 5-digit number")
+	}
+}
+
+func TestScreenFindRegexp(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("Name: Alice\nAge: 30")
+
+	row, col := s.FindRegexp(`\d+`)
+	if row != 1 || col != 5 {
+		t.Errorf("FindRegexp(\\d+) = (%d, %d), want (1, 5)", row, col)
+	}
+}
+
+func TestScreenSize(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(80, 24)
+	cols, lines := s.Size()
+	if cols != 80 || lines != 24 {
+		t.Errorf("Size() = (%d, %d), want (80, 24)", cols, lines)
+	}
+}
+
+// ── Region extended tests ─────────────────────────────────────────────────
+
+func TestRegionRowCount(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("AAAA\nBBBB\n\nDDDD")
+
+	r := s.Region(0, 0, 4, 4)
+	if got := r.RowCount(); got != 3 {
+		t.Errorf("Region.RowCount() = %d, want 3", got)
+	}
+}
+
+func TestRegionIsEmpty(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("AAAA")
+
+	r := s.Region(2, 0, 4, 2) // empty area
+	if !r.IsEmpty() {
+		t.Error("Region.IsEmpty() should be true for blank region")
+	}
+}
+
+func TestRegionFindText(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("AAAA BBBB\nCCCC DDDD")
+
+	r := s.Region(0, 5, 4, 2)
+	row, col := r.FindText("DDDD")
+	if row != 1 || col != 0 {
+		t.Errorf("Region.FindText(DDDD) = (%d, %d), want (1, 0)", row, col)
+	}
+}
+
+func TestRegionStyleAt(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("\x1b[1mBold\x1b[0m Normal")
+
+	r := s.Region(0, 0, 10, 1)
+	style := r.StyleAt(0, 0)
+	if !style.Bold {
+		t.Error("Region.StyleAt should return bold at (0, 0)")
+	}
+	style = r.StyleAt(0, 5)
+	if style.Bold {
+		t.Error("Region.StyleAt should return non-bold at (0, 5)")
+	}
+}
+
+func TestRegionAllRows(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 3)
+	s.Render("AB CD\nEF GH\nIJ KL")
+
+	r := s.Region(0, 3, 2, 3)
+	rows := r.AllRows()
+	if len(rows) != 3 {
+		t.Fatalf("Region.AllRows() len = %d, want 3", len(rows))
+	}
+	if rows[0] != "CD" || rows[1] != "GH" || rows[2] != "KL" {
+		t.Errorf("Region.AllRows() = %v, want [CD GH KL]", rows)
+	}
+}
+
+func TestRegionCountOccurrences(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 3)
+	s.Render("ab ab\nab ab\nab")
+
+	r := s.Region(0, 0, 5, 2)
+	if got := r.CountOccurrences("ab"); got != 4 {
+		t.Errorf("Region.CountOccurrences(ab) = %d, want 4", got)
+	}
+}
+
+// ── Assert extended tests ─────────────────────────────────────────────────
+
+func TestAssertRowEqualsPass(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("Exact Match")
+
+	ft := &fakeTB{}
+	tuitest.AssertRowEquals(ft, s, 0, "Exact Match")
+	if ft.failed {
+		t.Error("AssertRowEquals should not fail for exact match")
+	}
+}
+
+func TestAssertRowEqualsFail(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("Exact Match")
+
+	ft := &fakeTB{}
+	tuitest.AssertRowEquals(ft, s, 0, "Wrong")
+	if !ft.failed {
+		t.Error("AssertRowEquals should fail for non-match")
+	}
+}
+
+func TestAssertRowCountPass(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("A\nB\nC")
+
+	ft := &fakeTB{}
+	tuitest.AssertRowCount(ft, s, 3)
+	if ft.failed {
+		t.Error("AssertRowCount should not fail for correct count")
+	}
+}
+
+func TestAssertRowCountFail(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("A\nB\nC")
+
+	ft := &fakeTB{}
+	tuitest.AssertRowCount(ft, s, 5)
+	if !ft.failed {
+		t.Error("AssertRowCount should fail for wrong count")
+	}
+}
+
+func TestAssertEmptyPass(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("")
+
+	ft := &fakeTB{}
+	tuitest.AssertEmpty(ft, s)
+	if ft.failed {
+		t.Error("AssertEmpty should not fail for empty screen")
+	}
+}
+
+func TestAssertEmptyFail(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("text")
+
+	ft := &fakeTB{}
+	tuitest.AssertEmpty(ft, s)
+	if !ft.failed {
+		t.Error("AssertEmpty should fail for non-empty screen")
+	}
+}
+
+func TestAssertNotEmptyPass(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("text")
+
+	ft := &fakeTB{}
+	tuitest.AssertNotEmpty(ft, s)
+	if ft.failed {
+		t.Error("AssertNotEmpty should not fail for non-empty screen")
+	}
+}
+
+func TestAssertNotEmptyFail(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("")
+
+	ft := &fakeTB{}
+	tuitest.AssertNotEmpty(ft, s)
+	if !ft.failed {
+		t.Error("AssertNotEmpty should fail for empty screen")
+	}
+}
+
+func TestAssertMatchesPass(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("Error: 404 not found")
+
+	ft := &fakeTB{}
+	tuitest.AssertMatches(ft, s, `\d{3}`)
+	if ft.failed {
+		t.Error("AssertMatches should not fail for matching pattern")
+	}
+}
+
+func TestAssertMatchesFail(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("Hello World")
+
+	ft := &fakeTB{}
+	tuitest.AssertMatches(ft, s, `\d+`)
+	if !ft.failed {
+		t.Error("AssertMatches should fail for non-matching pattern")
+	}
+}
+
+func TestAssertRowMatchesPass(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("Name: Alice\nAge: 30")
+
+	ft := &fakeTB{}
+	tuitest.AssertRowMatches(ft, s, 1, `Age: \d+`)
+	if ft.failed {
+		t.Error("AssertRowMatches should not fail for matching row")
+	}
+}
+
+func TestAssertRowMatchesFail(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("Name: Alice")
+
+	ft := &fakeTB{}
+	tuitest.AssertRowMatches(ft, s, 0, `\d+`)
+	if !ft.failed {
+		t.Error("AssertRowMatches should fail for non-matching row")
+	}
+}
+
+func TestAssertContainsCountPass(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("ab ab\nab")
+
+	ft := &fakeTB{}
+	tuitest.AssertContainsCount(ft, s, "ab", 3)
+	if ft.failed {
+		t.Error("AssertContainsCount should not fail for correct count")
+	}
+}
+
+func TestAssertContainsCountFail(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("ab ab\nab")
+
+	ft := &fakeTB{}
+	tuitest.AssertContainsCount(ft, s, "ab", 5)
+	if !ft.failed {
+		t.Error("AssertContainsCount should fail for wrong count")
+	}
+}
+
+func TestAssertFgAtPass(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("\x1b[31mRed\x1b[0m")
+
+	ft := &fakeTB{}
+	tuitest.AssertFgAt(ft, s, 0, 0, "red")
+	if ft.failed {
+		t.Error("AssertFgAt should not fail for correct color")
+	}
+}
+
+func TestAssertFgAtFail(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("\x1b[31mRed\x1b[0m")
+
+	ft := &fakeTB{}
+	tuitest.AssertFgAt(ft, s, 0, 0, "blue")
+	if !ft.failed {
+		t.Error("AssertFgAt should fail for wrong color")
+	}
+}
+
+func TestAssertBgAtPass(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("\x1b[44mBlue\x1b[0m")
+
+	ft := &fakeTB{}
+	tuitest.AssertBgAt(ft, s, 0, 0, "blue")
+	if ft.failed {
+		t.Error("AssertBgAt should not fail for correct color")
+	}
+}
+
+func TestAssertItalicAtPass(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("\x1b[3mItalic\x1b[0m")
+
+	ft := &fakeTB{}
+	tuitest.AssertItalicAt(ft, s, 0, 0)
+	if ft.failed {
+		t.Error("AssertItalicAt should not fail for italic cell")
+	}
+}
+
+func TestAssertUnderlineAtPass(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("\x1b[4mUnderline\x1b[0m")
+
+	ft := &fakeTB{}
+	tuitest.AssertUnderlineAt(ft, s, 0, 0)
+	if ft.failed {
+		t.Error("AssertUnderlineAt should not fail for underlined cell")
+	}
+}
+
+func TestAssertTextAtPass(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("Hello, World!")
+
+	ft := &fakeTB{}
+	tuitest.AssertTextAt(ft, s, 0, 7, "World")
+	if ft.failed {
+		t.Error("AssertTextAt should not fail for correct text")
+	}
+}
+
+func TestAssertTextAtFail(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("Hello, World!")
+
+	ft := &fakeTB{}
+	tuitest.AssertTextAt(ft, s, 0, 7, "Wrong")
+	if !ft.failed {
+		t.Error("AssertTextAt should fail for wrong text")
+	}
+}
+
+func TestAssertRegionContainsPass(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("AAAA BBBB\nCCCC DDDD")
+
+	ft := &fakeTB{}
+	tuitest.AssertRegionContains(ft, s, 0, 5, 4, 2, "BBBB")
+	if ft.failed {
+		t.Error("AssertRegionContains should not fail for present text")
+	}
+}
+
+func TestAssertRegionContainsFail(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("AAAA BBBB\nCCCC DDDD")
+
+	ft := &fakeTB{}
+	tuitest.AssertRegionContains(ft, s, 0, 5, 4, 2, "AAAA")
+	if !ft.failed {
+		t.Error("AssertRegionContains should fail for absent text")
+	}
+}
+
+func TestAssertScreenEqualsPass(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(20, 3)
+	s.Render("Row 0\nRow 1\nRow 2")
+
+	ft := &fakeTB{}
+	tuitest.AssertScreenEquals(ft, s, "Row 0\nRow 1\nRow 2")
+	if ft.failed {
+		t.Error("AssertScreenEquals should not fail for identical content")
+	}
+}
+
+func TestAssertScreenEqualsFail(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(20, 3)
+	s.Render("Row 0\nRow 1\nRow 2")
+
+	ft := &fakeTB{}
+	tuitest.AssertScreenEquals(ft, s, "Row 0\nWrong\nRow 2")
+	if !ft.failed {
+		t.Error("AssertScreenEquals should fail for different content")
+	}
+}
+
+// ── Diff tests ────────────────────────────────────────────────────────────
+
+func TestDiffIdentical(t *testing.T) {
+	track(t)
+	a := tuitest.NewScreen(20, 3)
+	a.Render("Same\nContent")
+	b := tuitest.NewScreen(20, 3)
+	b.Render("Same\nContent")
+
+	diff := tuitest.ScreenDiff(a, b)
+	if diff.HasChanges() {
+		t.Error("ScreenDiff should have no changes for identical screens")
+	}
+}
+
+func TestDiffChanged(t *testing.T) {
+	track(t)
+	a := tuitest.NewScreen(20, 3)
+	a.Render("Line A\nLine B")
+	b := tuitest.NewScreen(20, 3)
+	b.Render("Line A\nLine C")
+
+	diff := tuitest.ScreenDiff(a, b)
+	if !diff.HasChanges() {
+		t.Error("ScreenDiff should detect changes")
+	}
+	changed := diff.ChangedLines()
+	if len(changed) != 1 {
+		t.Fatalf("ChangedLines() = %d, want 1", len(changed))
+	}
+	if changed[0].Row != 1 {
+		t.Errorf("changed row = %d, want 1", changed[0].Row)
+	}
+}
+
+func TestDiffString(t *testing.T) {
+	track(t)
+	a := tuitest.NewScreen(20, 2)
+	a.Render("Same\nOld")
+	b := tuitest.NewScreen(20, 2)
+	b.Render("Same\nNew")
+
+	diff := tuitest.ScreenDiff(a, b)
+	output := diff.String()
+	if !strings.Contains(output, "row 1") {
+		t.Error("diff output should mention the changed row")
+	}
+}
+
+func TestAssertScreensEqualPass(t *testing.T) {
+	track(t)
+	a := tuitest.NewScreen(20, 3)
+	a.Render("Same")
+	b := tuitest.NewScreen(20, 3)
+	b.Render("Same")
+
+	ft := &fakeTB{}
+	tuitest.AssertScreensEqual(ft, a, b)
+	if ft.failed {
+		t.Error("AssertScreensEqual should not fail for identical screens")
+	}
+}
+
+func TestAssertScreensNotEqualPass(t *testing.T) {
+	track(t)
+	a := tuitest.NewScreen(20, 3)
+	a.Render("A")
+	b := tuitest.NewScreen(20, 3)
+	b.Render("B")
+
+	ft := &fakeTB{}
+	tuitest.AssertScreensNotEqual(ft, a, b)
+	if ft.failed {
+		t.Error("AssertScreensNotEqual should not fail for different screens")
+	}
+}
+
+// ── Predicate tests ───────────────────────────────────────────────────────
+
+func TestUntilContains(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("Hello World")
+
+	pred := tuitest.UntilContains("World")
+	if !pred(s) {
+		t.Error("UntilContains should return true when text exists")
+	}
+}
+
+func TestUntilNotContains(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("Hello World")
+
+	pred := tuitest.UntilNotContains("Missing")
+	if !pred(s) {
+		t.Error("UntilNotContains should return true when text is absent")
+	}
+}
+
+func TestUntilRowContains(t *testing.T) {
+	track(t)
+	s := tuitest.NewScreen(40, 5)
+	s.Render("First\nSecond")
+
+	pred := tuitest.UntilRowContains(1, "Second")
+	if !pred(s) {
+		t.Error("UntilRowContains should return true when row contains text")
+	}
+}
+
+// ── KeyNames test ─────────────────────────────────────────────────────────
+
+func TestKeyNames(t *testing.T) {
+	track(t)
+	names := tuitest.KeyNames()
+	if len(names) < 30 {
+		t.Errorf("KeyNames() returned %d keys, want at least 30", len(names))
+	}
+}
+
+// ── Stopwatch test ────────────────────────────────────────────────────────
+
+func TestStopwatch(t *testing.T) {
+	track(t)
+	sw := tuitest.StartStopwatch()
+	elapsed := sw.Elapsed()
+	if elapsed < 0 {
+		t.Error("Stopwatch.Elapsed() should be non-negative")
 	}
 }
