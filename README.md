@@ -8,9 +8,11 @@ The pragmatic TUI toolkit for shipping CLI tools fast. Wraps [Bubble Tea](https:
 - ListView, StatusBar, Help screen, ConfigEditor, CommandBar, DetailOverlay, CollapsibleSection
 - Dual-pane layout engine with collapsible sidebar
 - Keybinding registry with auto-generated help screen
-- Dark and light themes with semantic color tokens
+- Dark and light themes with semantic color tokens + extensible `Extra` color map
 - Poller for background data with automatic tick-driven refresh
-- Utilities: Sparkline, RelativeTime, OpenURL, OSC8Link
+- **CLI primitives** — Confirm, SelectOne, MultiSelect, Input, Password, Spinner, Progress, and styled message helpers for non-TUI workflows
+- **tuitest** — structured TUI testing framework with virtual terminal, 90+ assertions, screen diffing, golden file support, and vitest-like test reporter
+- Utilities: Sparkline, RelativeTime, OpenURL, Hyperlink
 - **Self-update built in** — binary replacement with SHA256 checksum verification, update cache, and Homebrew/Scoop detection. No other Go TUI library ships this.
 
 ## Install
@@ -56,10 +58,13 @@ func main() {
 }
 ```
 
-See [`examples/dashboard/`](examples/dashboard/) for a complete app showing all components together.
+See the examples for complete apps showing components together:
 
 ```bash
-go run ./examples/dashboard/
+go run ./examples/minimal/     # Simple ListView in ~30 lines
+go run ./examples/dashboard/   # Full Table + DualPane + ConfigEditor
+go run ./examples/monitor/     # Service fleet dashboard with all components
+go run ./examples/cli-demo/    # Interactive CLI primitives showcase
 ```
 
 ## Components
@@ -219,6 +224,113 @@ app.Run()
 
 Unknown message types are forwarded to all components via `Update`.
 
+## CLI Primitives
+
+The `cli` package provides interactive prompts for tools that need more than `fmt.Print` but less than a full TUI. Each primitive runs a minimal Bubble Tea program, captures input, and returns the result.
+
+```go
+import "github.com/moneycaringcoder/tuikit-go/cli"
+
+// Yes/No
+proceed := cli.Confirm("Deploy to production?", false)
+
+// Single select (type-to-filter on 10+ items)
+lang, idx, err := cli.SelectOne("Language:", []string{"Go", "Rust", "Python"})
+
+// Multi select with checkboxes
+selected, indices, err := cli.MultiSelect("Features:", []string{"Auth", "DB", "Cache"})
+
+// Text input with validation
+name, err := cli.Input("Project name:", func(s string) error {
+    if s == "" { return fmt.Errorf("required") }
+    return nil
+})
+
+// Masked password input
+secret, err := cli.Password("API token:", nil)
+
+// Spinner (runs in background goroutine)
+s := cli.Spin("Installing...")
+// ... do work ...
+s.Stop()
+
+// Progress bar
+bar := cli.NewProgress(100, "Downloading")
+bar.Increment(25)
+bar.Done()
+```
+
+**Styled message helpers** for consistent CLI output:
+
+```go
+cli.Title("Setup Wizard")          // Bold underlined title
+cli.Step(1, 3, "Installing deps")  // [1/3] numbered step
+cli.Success("Build complete")      // ✓ green
+cli.Warning("Deprecated flag")     // ! yellow
+cli.Error("Connection failed")     // ✗ red
+cli.Info("Using defaults")         // ℹ blue
+cli.Separator()                    // ────────────
+cli.KeyValue("Version", "1.2.3")   // dimmed key: value
+```
+
+## Testing with tuitest
+
+The `tuitest` package provides a virtual terminal and assertion helpers for testing Bubble Tea models without launching a real terminal.
+
+```go
+import "github.com/moneycaringcoder/tuikit-go/tuitest"
+
+func TestMyApp(t *testing.T) {
+    tm := tuitest.NewTestModel(t, myModel{}, 80, 24)
+
+    // Interact
+    tm.SendKey("down")
+    tm.SendKeys("j", "j", "enter")
+    tm.Type("hello")
+    tm.SendResize(120, 40)
+    tm.SendMsg(myCustomMsg{})
+
+    // Assert on rendered screen
+    scr := tm.Screen()
+    tuitest.AssertContains(t, scr, "Expected text")
+    tuitest.AssertRowContains(t, scr, 0, "Header")
+    tuitest.AssertFgAt(t, scr, 2, 0, "red")
+    tuitest.AssertBoldAt(t, scr, 0, 0)
+    tuitest.AssertMatches(t, scr, `\d+ items`)
+    tuitest.AssertRowCount(t, scr, 5)
+
+    // Region-scoped assertions
+    tuitest.AssertRegionContains(t, scr, 0, 40, 20, 10, "sidebar text")
+
+    // Screen comparison
+    before := tm.Screen()
+    tm.SendKey("enter")
+    after := tm.Screen()
+    tuitest.AssertScreensNotEqual(t, before, after)
+
+    // Golden file testing
+    tuitest.AssertGolden(t, scr, "my-test") // compares against testdata/my-test.golden
+
+    // Wait for async state
+    ok := tm.WaitFor(tuitest.UntilContains("loaded"), 10)
+}
+```
+
+**Vitest-like test reporter** — run with `-v` for grouped, color-coded output:
+
+```
+  tuitest · terminal test toolkit
+
+  Screen
+    ✓ PlainText 0.000ms
+    ✓ Contains 0.000ms
+  Assert
+    ✓ ContainsPass 0.000ms
+    ✓ RowMatchesPass 0.000ms
+
+  PASS 96 tests (3ms)
+```
+
 ## Utilities
 
 ### Sparkline
@@ -245,12 +357,12 @@ Opens a URL in the user's default browser. Runs asynchronously, does not block.
 tuikit.OpenURL("https://github.com/moneycaringcoder/tuikit-go")
 ```
 
-### OSC8Link
+### Hyperlink
 
-Wraps text in an OSC8 terminal hyperlink escape sequence.
+Wraps text in a clickable terminal hyperlink (OSC8). Supported in modern terminals.
 
 ```go
-tuikit.OSC8Link("https://example.com", "click here")
+tuikit.Hyperlink("https://example.com", "click here")
 ```
 
 ## Layout & Theming
@@ -287,6 +399,21 @@ tuikit.ThemeFromMap(map[string]string{
 ```
 
 Semantic tokens: `Positive`, `Negative`, `Accent`, `Muted`, `Text`, `TextInverse`, `Cursor`, `Border`, `Flash`.
+
+**App-specific colors** — extend the theme with domain-specific tokens via the `Extra` map:
+
+```go
+theme := tuikit.ThemeFromMap(map[string]string{
+    "positive": "#22c55e",
+    "push":     "#22c55e",  // unknown keys go into Extra
+    "pr":       "#3b82f6",
+    "review":   "#a855f7",
+})
+
+// Look up with fallback
+color := theme.Color("push", theme.Positive) // returns #22c55e
+color = theme.Color("missing", theme.Muted)  // returns Muted fallback
+```
 
 Components receive theme updates automatically if they implement `Themed`:
 
