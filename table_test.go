@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 )
 
 func TestNewTable(t *testing.T) {
@@ -325,5 +327,56 @@ func TestTableSortIndicator(t *testing.T) {
 	view = tbl.View()
 	if !strings.Contains(view, "▼") {
 		t.Error("should show descending sort indicator")
+	}
+}
+
+func TestTableRowStylerBackgroundCoversContent(t *testing.T) {
+	// Force truecolor so lipgloss emits ANSI sequences in test.
+	prev := lipgloss.DefaultRenderer().ColorProfile()
+	lipgloss.DefaultRenderer().SetColorProfile(termenv.TrueColor)
+	defer lipgloss.DefaultRenderer().SetColorProfile(prev)
+
+	cols := []Column{
+		{Title: "Name", Width: 20},
+	}
+	rows := []Row{{"Alice"}}
+
+	// RowStyler that sets a background color on every row.
+	bgColor := lipgloss.Color("#ff0000")
+	tbl := NewTable(cols, rows, TableOpts{
+		RowStyler: func(row Row, idx int, isCursor bool, theme Theme) *lipgloss.Style {
+			s := lipgloss.NewStyle().Background(bgColor)
+			return &s
+		},
+	})
+	tbl.SetSize(80, 10)
+	tbl.SetTheme(DefaultTheme())
+	tbl.SetFocused(true)
+
+	view := tbl.View()
+
+	// The ANSI escape for our background color (48;2;255;0;0 for #ff0000 truecolor)
+	// should appear before the cell content "Alice", not just around padding.
+	lines := strings.Split(view, "\n")
+	found := false
+	for _, line := range lines {
+		if !strings.Contains(line, "Alice") {
+			continue
+		}
+		found = true
+		// Find position of "Alice" in the line
+		aliceIdx := strings.Index(line, "Alice")
+		if aliceIdx < 0 {
+			t.Fatal("could not find Alice in line")
+		}
+		// The substring leading up to (and including) Alice should contain
+		// a background escape sequence. 48;2; is the SGR truecolor background prefix.
+		prefix := line[:aliceIdx+len("Alice")]
+		if !strings.Contains(prefix, "48;2;") {
+			t.Errorf("RowStyler background should be applied to cell content; got line: %q", line)
+		}
+	}
+	if !found {
+		t.Fatal("could not find any line containing 'Alice' in table view")
 	}
 }

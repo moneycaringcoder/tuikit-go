@@ -453,6 +453,14 @@ func (t *Table) alignCellStyled(content string, width int, align Alignment, rs *
 		pad = rs.Render(pad)
 	}
 
+	// Apply row-level background to content so flash/cursor backgrounds
+	// cover the full cell, not just the padding around styled text.
+	if rs != nil {
+		if bg := rs.GetBackground(); bg != (lipgloss.NoColor{}) {
+			content = lipgloss.NewStyle().Background(bg).Render(content)
+		}
+	}
+
 	switch align {
 	case Right:
 		return pad + content
