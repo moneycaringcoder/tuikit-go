@@ -39,6 +39,12 @@ func OSC8Link(url, text string) string {
 	return fmt.Sprintf("\x1b]8;;%s\x1b\\%s\x1b]8;;\x1b\\", url, text)
 }
 
+// Hyperlink is an alias for OSC8Link — wraps text in a clickable terminal hyperlink.
+// Supported in modern terminals (iTerm2, Kitty, WezTerm, Windows Terminal, etc.).
+func Hyperlink(url, text string) string {
+	return OSC8Link(url, text)
+}
+
 // OpenURL opens a URL in the user's default browser.
 // It runs the command asynchronously and does not block.
 func OpenURL(url string) {
