@@ -45,11 +45,19 @@ func (s *StatusBar) View() string {
 
 	style := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(s.theme.Muted)).
-		Width(s.width)
+		Width(s.width).
+		MaxHeight(1)
 
-	gap := s.width - lipgloss.Width(left) - lipgloss.Width(right)
+	leftW := lipgloss.Width(left)
+	rightW := lipgloss.Width(right)
+	gap := s.width - leftW - rightW
 	if gap < 0 {
 		gap = 0
+		maxLeft := s.width - rightW
+		if maxLeft < 0 {
+			maxLeft = 0
+		}
+		left = lipgloss.NewStyle().MaxWidth(maxLeft).Render(left)
 	}
 
 	content := left + strings.Repeat(" ", gap) + right

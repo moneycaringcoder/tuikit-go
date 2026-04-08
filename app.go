@@ -228,7 +228,10 @@ func (a *appModel) focusableComponents() []Component {
 	if a.dualPane != nil {
 		result := []Component{a.dualPane.Main}
 		if a.dualPane.Side != nil {
-			result = append(result, a.dualPane.Side)
+			_, _, vis := a.dualPane.compute(a.width, 0)
+			if vis {
+				result = append(result, a.dualPane.Side)
+			}
 		}
 		return result
 	}
@@ -563,14 +566,7 @@ func (a *appModel) resize() {
 	contentHeight := a.height
 	if a.statusBar != nil {
 		contentHeight--
-		sbWidth := a.width
-		if a.dualPane != nil {
-			main, _, vis := a.dualPane.compute(a.width, 0)
-			if vis {
-				sbWidth = main.width
-			}
-		}
-		a.statusBar.SetSize(sbWidth, 1)
+		a.statusBar.SetSize(a.width, 1)
 	}
 
 	if a.notifyMsg != "" {

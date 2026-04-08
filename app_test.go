@@ -28,7 +28,16 @@ func (s *stubComponent) Update(msg tea.Msg) (Component, tea.Cmd) {
 	}
 	return s, nil
 }
-func (s *stubComponent) View() string          { return s.name }
+func (s *stubComponent) View() string {
+	if s.height > 0 {
+		lines := make([]string, s.height)
+		for i := range lines {
+			lines[i] = s.name
+		}
+		return strings.Join(lines, "\n")
+	}
+	return s.name
+}
 func (s *stubComponent) KeyBindings() []KeyBind { return s.bindings }
 func (s *stubComponent) SetSize(w, h int)      { s.width = w; s.height = h }
 func (s *stubComponent) Focused() bool          { return s.focused }
@@ -315,5 +324,108 @@ func TestAppAutoPushActiveOverlay(t *testing.T) {
 
 	if a.overlays.active() != o {
 		t.Error("overlay should be auto-pushed after becoming active")
+	}
+}
+
+func TestDualPaneHeightConsistency(t *testing.T) {
+	main := &stubComponent{name: "M"}
+	side := &stubComponent{name: "S"}
+
+	a := newAppModel(
+		WithTheme(DefaultTheme()),
+		WithLayout(&DualPane{
+			Main:         main,
+			Side:         side,
+			SideWidth:    20,
+			MinMainWidth: 40,
+			SideRight:    true,
+			ToggleKey:    "p",
+		}),
+		WithStatusBar(
+			func() string { return "left" },
+			func() string { return "right" },
+		),
+	)
+
+	totalHeight := 24
+	// Width wide enough for sidebar to show: need >= MinMainWidth + SideWidth + 3 = 63
+	wideWidth := 80
+
+	a.width = wideWidth
+	a.height = totalHeight
+	a.resize()
+
+	view := a.View()
+	lines := strings.Split(view, "\n")
+
+	if len(lines) != totalHeight {
+		t.Errorf("DualPane wide view: expected %d lines, got %d", totalHeight, len(lines))
+	}
+
+	// Badge line should exist (2 focusable components)
+	_, _, vis := a.dualPane.compute(wideWidth, 0)
+	if !vis {
+		t.Error("sidebar should be visible at wide width")
+	}
+
+	// Now narrow the terminal so sidebar auto-hides
+	narrowWidth := 50 // < 40 + 20 + 3 = 63
+	a.width = narrowWidth
+	a.resize()
+
+	view = a.View()
+	lines = strings.Split(view, "\n")
+
+	if len(lines) != totalHeight {
+		t.Errorf("DualPane narrow view: expected %d lines, got %d", totalHeight, len(lines))
+	}
+
+	_, _, vis = a.dualPane.compute(narrowWidth, 0)
+	if vis {
+		t.Error("sidebar should be hidden at narrow width")
+	}
+
+	// Test the transition: go wide again
+	a.width = wideWidth
+	a.resize()
+
+	view = a.View()
+	lines = strings.Split(view, "\n")
+
+	if len(lines) != totalHeight {
+		t.Errorf("DualPane re-widened view: expected %d lines, got %d", totalHeight, len(lines))
+	}
+}
+
+func TestDualPaneBadgesMatchVisibility(t *testing.T) {
+	main := &stubComponent{name: "M"}
+	side := &stubComponent{name: "S"}
+
+	a := newAppModel(
+		WithTheme(DefaultTheme()),
+		WithLayout(&DualPane{
+			Main:         main,
+			Side:         side,
+			SideWidth:    20,
+			MinMainWidth: 40,
+			SideRight:    true,
+		}),
+	)
+
+	// Wide: sidebar visible, badges should show
+	a.width = 80
+	a.height = 24
+	a.resize()
+
+	if !a.showBadges() {
+		t.Error("badges should show when sidebar is visible (2 focusable)")
+	}
+
+	// Narrow: sidebar hidden, badges should NOT show (only 1 focusable)
+	a.width = 50
+	a.resize()
+
+	if a.showBadges() {
+		t.Error("badges should not show when sidebar is auto-hidden (1 focusable)")
 	}
 }

@@ -308,6 +308,11 @@ func (t *Table) View() string {
 		lines[len(lines)-1] = filterStyle.Render(fmt.Sprintf(" / %s█", t.filterQuery))
 	}
 
+	// Pad to exactly t.height lines so JoinHorizontal with a separator
+	// doesn't misalign when there are fewer rows than available space.
+	for len(lines) < t.height {
+		lines = append(lines, "")
+	}
 	if len(lines) > t.height {
 		lines = lines[:t.height]
 	}
