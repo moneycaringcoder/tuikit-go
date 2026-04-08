@@ -325,3 +325,12 @@ func CheckForUpdate(cfg UpdateConfig) (*UpdateResult, error) {
 
 	return result, nil
 }
+
+// WithAutoUpdate enables automatic update checking on app startup.
+// In UpdateNotify mode, a notification is shown if an update is available.
+// In UpdateBlocking mode, the user is prompted in stdout before the TUI starts.
+func WithAutoUpdate(cfg UpdateConfig) Option {
+	return func(a *appModel) {
+		a.updateConfig = &cfg
+	}
+}

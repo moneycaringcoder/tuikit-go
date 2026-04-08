@@ -275,6 +275,40 @@ func TestVerifyChecksum(t *testing.T) {
 	})
 }
 
+func TestWithAutoUpdateNotifyMode(t *testing.T) {
+	responseJSON := `{
+		"tag_name": "v0.5.0",
+		"html_url": "https://github.com/owner/repo/releases/tag/v0.5.0",
+		"body": "New stuff",
+		"assets": []
+	}`
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(responseJSON))
+	}))
+	defer srv.Close()
+
+	cfg := tuikit.UpdateConfig{
+		Owner:      "owner",
+		Repo:       "repo",
+		BinaryName: "myapp",
+		Version:    "v0.3.0",
+		Mode:       tuikit.UpdateNotify,
+		CacheTTL:   24 * time.Hour,
+		CacheDir:   t.TempDir(),
+		APIBaseURL: srv.URL,
+	}
+
+	// Verify the option can be passed to NewApp without panic
+	app := tuikit.NewApp(
+		tuikit.WithAutoUpdate(cfg),
+	)
+	if app == nil {
+		t.Fatal("expected non-nil app")
+	}
+}
+
 func TestCheckForUpdate(t *testing.T) {
 	responseJSON := `{
 		"tag_name": "v0.5.0",
