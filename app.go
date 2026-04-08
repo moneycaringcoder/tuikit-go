@@ -106,6 +106,8 @@ type appModel struct {
 	focusIdx       int
 	width          int
 	height         int
+	notifyMsg      string
+	notifyExpiry   time.Time
 }
 
 // newAppModel creates an appModel for testing (does not start tea.Program).
@@ -295,10 +297,22 @@ func (a *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case TickMsg:
 		return a.handleTick(msg)
+
+	case NotifyMsg:
+		a.notifyMsg = msg.Text
+		dur := msg.Duration
+		if dur <= 0 {
+			dur = 2 * time.Second
+		}
+		a.notifyExpiry = time.Now().Add(dur)
+		a.resize()
+		return a, nil
 	}
 
 	// Forward unknown messages to all components (for custom app messages)
-	return a, a.broadcastMsg(msg)
+	cmd := a.broadcastMsg(msg)
+	a.checkOverlayActivation()
+	return a, cmd
 }
 
 // broadcastMsg sends a message to all registered components.
@@ -323,11 +337,19 @@ func (a *appModel) broadcastMsg(msg tea.Msg) tea.Cmd {
 }
 
 func (a *appModel) handleTick(msg TickMsg) (tea.Model, tea.Cmd) {
+	if a.notifyMsg != "" && time.Now().After(a.notifyExpiry) {
+		a.notifyMsg = ""
+		a.resize()
+	}
+
 	var cmds []tea.Cmd
 	cmds = append(cmds, a.broadcastMsg(msg))
 	if cmd := a.tickCmd(); cmd != nil {
 		cmds = append(cmds, cmd)
 	}
+
+	a.checkOverlayActivation()
+
 	return a, tea.Batch(cmds...)
 }
 
@@ -347,9 +369,15 @@ func (a *appModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if overlay := a.overlays.active(); overlay != nil {
 		if key == "esc" {
 			a.overlays.pop()
+			a.resize()
 			return a, nil
 		}
 		_, cmd := overlay.Update(msg)
+		// If the overlay closed itself (e.g., CommandBar after executing), pop it
+		if !overlay.IsActive() {
+			a.overlays.stack = a.overlays.stack[:len(a.overlays.stack)-1]
+			a.resize()
+		}
 		if isConsumed(cmd) {
 			return a, nil
 		}
@@ -430,11 +458,43 @@ func (a *appModel) openOverlay(o Overlay) {
 	a.overlays.push(o)
 }
 
+// checkOverlayActivation pushes any named overlay that became active
+// outside of the normal trigger-key flow (e.g., via component calling Show()).
+func (a *appModel) checkOverlayActivation() {
+	for _, no := range a.namedOverlays {
+		if no.overlay.IsActive() && a.overlays.active() != no.overlay {
+			// Check it's not already somewhere in the stack
+			found := false
+			for _, stacked := range a.overlays.stack {
+				if stacked == no.overlay {
+					found = true
+					break
+				}
+			}
+			if !found {
+				no.overlay.SetSize(a.width, a.height)
+				a.overlays.push(no.overlay)
+			}
+		}
+	}
+}
+
 func (a *appModel) resize() {
 	contentHeight := a.height
 	if a.statusBar != nil {
 		contentHeight--
 		a.statusBar.SetSize(a.width, 1)
+	}
+
+	if a.notifyMsg != "" {
+		contentHeight--
+	}
+
+	// Inline overlay takes a line at the bottom
+	if overlay := a.overlays.active(); overlay != nil {
+		if _, ok := overlay.(InlineOverlay); ok {
+			contentHeight--
+		}
 	}
 
 	compHeight := contentHeight
@@ -482,9 +542,11 @@ func (a *appModel) renderBadge(name string, focused bool) string {
 }
 
 func (a *appModel) View() string {
-	// Active overlay takes over the screen
+	// Active overlay takes over the screen (unless inline)
 	if overlay := a.overlays.active(); overlay != nil {
-		return overlay.View()
+		if _, ok := overlay.(InlineOverlay); !ok {
+			return overlay.View()
+		}
 	}
 
 	badges := a.showBadges()
@@ -538,8 +600,25 @@ func (a *appModel) View() string {
 		content = lipgloss.JoinVertical(lipgloss.Left, views...)
 	}
 
+	var bottom []string
+	if overlay := a.overlays.active(); overlay != nil {
+		if _, ok := overlay.(InlineOverlay); ok {
+			bottom = append(bottom, overlay.View())
+		}
+	}
+	if a.notifyMsg != "" {
+		notiStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(a.theme.TextInverse)).
+			Background(lipgloss.Color(a.theme.Flash)).
+			Width(a.width).
+			Padding(0, 1)
+		bottom = append(bottom, notiStyle.Render(a.notifyMsg))
+	}
 	if a.statusBar != nil {
-		return lipgloss.JoinVertical(lipgloss.Left, content, a.statusBar.View())
+		bottom = append(bottom, a.statusBar.View())
+	}
+	if len(bottom) > 0 {
+		return lipgloss.JoinVertical(lipgloss.Left, content, strings.Join(bottom, "\n"))
 	}
 	return content
 }
@@ -590,6 +669,13 @@ func (a *App) Run() error {
 func (a *App) AddKeyBind(kb KeyBind) {
 	a.model.globalBindings = append(a.model.globalBindings, kb)
 	a.model.registry.addBindings("global", []KeyBind{kb})
+}
+
+// Notify displays a timed notification. If duration is 0, defaults to 2 seconds.
+func (a *App) Notify(msg string, duration time.Duration) {
+	if a.program != nil {
+		a.program.Send(NotifyMsg{Text: msg, Duration: duration})
+	}
 }
 
 // Send sends a message to the running App from outside the Bubble Tea event loop.
