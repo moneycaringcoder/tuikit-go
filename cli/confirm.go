@@ -65,7 +65,7 @@ func Confirm(prompt string, defaultYes bool) bool {
 	fmt.Printf("%s %s ", prompt, hint)
 
 	m := confirmModel{prompt: prompt, defaultYes: defaultYes}
-	p := tea.NewProgram(m, tea.WithoutRenderer(), tea.WithInput(nil))
+	p := tea.NewProgram(m, tea.WithoutRenderer())
 	result, err := p.Run()
 	if err != nil {
 		return defaultYes

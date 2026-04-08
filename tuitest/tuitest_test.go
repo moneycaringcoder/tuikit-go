@@ -1,11 +1,36 @@
 package tuitest_test
 
 import (
+	"fmt"
+	"os"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/moneycaringcoder/tuikit-go/tuitest"
 )
+
+func TestMain(m *testing.M) {
+	fmt.Println()
+	fmt.Println("  ┌──────────────────────────────────┐")
+	fmt.Println("  │  tuitest · terminal test toolkit  │")
+	fmt.Println("  └──────────────────────────────────┘")
+	fmt.Println()
+
+	start := time.Now()
+	code := m.Run()
+	elapsed := time.Since(start)
+
+	fmt.Println()
+	if code == 0 {
+		fmt.Printf("  ✓ all tests passed in %dms\n", elapsed.Milliseconds())
+	} else {
+		fmt.Printf("  ✗ tests failed in %dms\n", elapsed.Milliseconds())
+	}
+	fmt.Println()
+
+	os.Exit(code)
+}
 
 func TestScreenPlainText(t *testing.T) {
 	s := tuitest.NewScreen(40, 5)
