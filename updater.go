@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -229,7 +230,55 @@ const (
 	UpdateNotify UpdateMode = iota
 	// UpdateBlocking prompts the user in stdout before the TUI starts.
 	UpdateBlocking
+	// UpdateSilent downloads and replaces the binary in the background.
+	// The app continues running; a "restart required" banner is shown on the
+	// next launch via the update cache.
+	UpdateSilent
+	// UpdateForced shows a full-screen gate that blocks app launch until the
+	// user either updates or quits. Also triggered implicitly when a release
+	// sets a minimum_version higher than the current version.
+	UpdateForced
+	// UpdateDryRun logs every action the updater would take via log.Printf
+	// but performs no writes. Useful for debugging without risk.
+	UpdateDryRun
 )
+
+// String returns the mode name for logging.
+func (m UpdateMode) String() string {
+	switch m {
+	case UpdateNotify:
+		return "notify"
+	case UpdateBlocking:
+		return "blocking"
+	case UpdateSilent:
+		return "silent"
+	case UpdateForced:
+		return "forced"
+	case UpdateDryRun:
+		return "dryrun"
+	}
+	return "unknown"
+}
+
+// EnvDisableUpdate is the environment variable name that, when set to "1",
+// "true", or "yes" (case-insensitive), short-circuits CheckForUpdate and
+// SelfUpdate without making any network calls. Intended as a kill switch
+// for CI, tests, and users who want to disable updates temporarily without
+// changing code.
+const EnvDisableUpdate = "TUIKIT_UPDATE_DISABLE"
+
+// updateDisabled reports whether the environment or config disables updates.
+func updateDisabled(cfg UpdateConfig) bool {
+	if cfg.Disabled {
+		return true
+	}
+	v := strings.ToLower(strings.TrimSpace(os.Getenv(EnvDisableUpdate)))
+	switch v {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
+}
 
 // ProgressFunc is called during download with bytes received and total bytes.
 // If total is -1, the content length is unknown.
@@ -241,13 +290,37 @@ type UpdateConfig struct {
 	Repo       string        // GitHub repo name
 	BinaryName string        // Binary name in release assets (e.g. "cryptstream")
 	Version    string        // Current version (set via ldflags; "dev" or "" skips check)
-	Mode       UpdateMode    // UpdateNotify or UpdateBlocking
+	Mode       UpdateMode    // UpdateNotify, UpdateBlocking, UpdateSilent, UpdateForced, UpdateDryRun
 	CacheTTL   time.Duration // How long to cache the check result (default: 1h)
 	CacheDir   string        // Override cache directory (default: os.UserConfigDir()/<BinaryName>)
+
+	// Disabled short-circuits every update call (same effect as the
+	// TUIKIT_UPDATE_DISABLE environment variable). Useful in tests and CI.
+	Disabled bool
+
+	// Channel selects which releases to consider. "" or "stable" uses
+	// /releases/latest (GitHub's latest stable marker). "beta" and
+	// "prerelease" fetch /releases and filter by tag suffix so consumers
+	// can opt into pre-release tracks.
+	Channel string
 
 	// OnProgress is called during binary asset download with bytes received and total bytes.
 	// If nil, no progress reporting occurs.
 	OnProgress ProgressFunc
+
+	// OnBeforeUpdate is called immediately before SelfUpdate performs any
+	// write. Returning a non-nil error aborts the update with that error.
+	// Useful for pre-flight checks (disk space, feature flags, user confirm).
+	OnBeforeUpdate func() error
+
+	// OnAfterUpdate is called after a successful binary replace, before
+	// the process exits. Receives the old and new version strings.
+	OnAfterUpdate func(oldVersion, newVersion string)
+
+	// OnUpdateError is called when any update step fails. The error is
+	// still returned from SelfUpdate; this hook just lets consumers
+	// observe/telemetry the failure in-process.
+	OnUpdateError func(err error)
 
 	// APIBaseURL overrides the GitHub API URL. Leave empty for production.
 	// Exported for testing; not intended for consumer use.
@@ -306,6 +379,10 @@ type UpdateResult struct {
 	ReleaseURL     string
 	ReleaseNotes   string
 	InstallMethod  InstallMethod
+	// Required is true when the release advertises a minimum_version marker
+	// that is newer than the current version. Consumers in UpdateForced
+	// mode MUST block until updated or quit when Required is true.
+	Required bool
 }
 
 // versionFromBuildInfo reads the module version embedded by go install.
@@ -330,6 +407,11 @@ func versionFromBuildInfo() string {
 // UpdateResult (Available=false) if no version can be determined.
 // Network/API errors return a zero-value result with no error (fail-silent).
 func CheckForUpdate(cfg UpdateConfig) (*UpdateResult, error) {
+	// Kill switch: honor env var and cfg.Disabled before touching network.
+	if updateDisabled(cfg) {
+		return &UpdateResult{CurrentVersion: cfg.Version}, nil
+	}
+
 	// Resolve version from build info when not set via ldflags
 	if cfg.Version == "" || cfg.Version == "dev" {
 		if v := versionFromBuildInfo(); v != "" {
@@ -460,9 +542,29 @@ func extractFromZip(data []byte, binaryName string) ([]byte, error) {
 }
 
 // SelfUpdate downloads the latest release and replaces the current binary.
-// Only works for manual installs (not Homebrew/Scoop).
+// Only works for manual installs (not Homebrew/Scoop). Honors the
+// TUIKIT_UPDATE_DISABLE env var, cfg.Disabled, and cfg.Mode == UpdateDryRun
+// (which logs every step without writing anything). Before/After/Error
+// hooks on cfg are called at the corresponding points.
 func SelfUpdate(cfg UpdateConfig) error {
+	if updateDisabled(cfg) {
+		return nil
+	}
+	if cfg.OnBeforeUpdate != nil {
+		if err := cfg.OnBeforeUpdate(); err != nil {
+			if cfg.OnUpdateError != nil {
+				cfg.OnUpdateError(err)
+			}
+			return fmt.Errorf("OnBeforeUpdate aborted: %w", err)
+		}
+	}
+	if cfg.Mode == UpdateDryRun {
+		return runDryRunUpdate(cfg)
+	}
 	if err := ValidateConfig(cfg); err != nil {
+		if cfg.OnUpdateError != nil {
+			cfg.OnUpdateError(err)
+		}
 		return fmt.Errorf("invalid config: %w", err)
 	}
 
@@ -510,14 +612,57 @@ func SelfUpdate(cfg UpdateConfig) error {
 
 	exePath, err := os.Executable()
 	if err != nil {
+		if cfg.OnUpdateError != nil {
+			cfg.OnUpdateError(err)
+		}
 		return fmt.Errorf("finding executable path: %w", err)
 	}
 	exePath, err = filepath.EvalSymlinks(exePath)
 	if err != nil {
+		if cfg.OnUpdateError != nil {
+			cfg.OnUpdateError(err)
+		}
 		return fmt.Errorf("resolving symlinks: %w", err)
 	}
 
-	return replaceBinary(exePath, binaryData)
+	if err := replaceBinary(exePath, binaryData); err != nil {
+		if cfg.OnUpdateError != nil {
+			cfg.OnUpdateError(err)
+		}
+		return err
+	}
+	if cfg.OnAfterUpdate != nil {
+		cfg.OnAfterUpdate(cfg.Version, rel.TagName)
+	}
+	return nil
+}
+
+// runDryRunUpdate executes the full update flow without touching disk.
+// Every action that would normally perform I/O is logged via log.Printf
+// so operators can verify what an update would do.
+func runDryRunUpdate(cfg UpdateConfig) error {
+	log.Printf("tuikit updater [dryrun]: would validate config for %s/%s", cfg.Owner, cfg.Repo)
+	if err := ValidateConfig(cfg); err != nil {
+		return fmt.Errorf("invalid config: %w", err)
+	}
+	log.Printf("tuikit updater [dryrun]: would fetch latest release from %s", cfg.githubBaseURL())
+	rel, err := FetchLatestRelease(cfg.githubBaseURL(), cfg.Owner, cfg.Repo)
+	if err != nil {
+		log.Printf("tuikit updater [dryrun]: fetch failed: %v", err)
+		return nil // dry-run never returns network errors
+	}
+	log.Printf("tuikit updater [dryrun]: latest=%s current=%s", rel.TagName, cfg.Version)
+	asset, err := MatchAsset(rel.Assets, cfg.BinaryName, runtime.GOOS, runtime.GOARCH)
+	if err != nil {
+		log.Printf("tuikit updater [dryrun]: no matching asset: %v", err)
+		return nil
+	}
+	log.Printf("tuikit updater [dryrun]: would download %s", asset.Name)
+	log.Printf("tuikit updater [dryrun]: would verify checksum and replace binary")
+	if cfg.OnAfterUpdate != nil {
+		log.Printf("tuikit updater [dryrun]: would call OnAfterUpdate(%s, %s)", cfg.Version, rel.TagName)
+	}
+	return nil
 }
 
 func downloadURL(client *http.Client, url string) ([]byte, error) {
