@@ -77,17 +77,17 @@ func NewLogViewer() *LogViewer {
 // Append adds a LogLine to the viewer. Safe to call from any goroutine.
 func (lv *LogViewer) Append(line LogLine) {
 	lv.mu.Lock()
+	defer lv.mu.Unlock()
 	lv.allLines = append(lv.allLines, line)
-	lv.mu.Unlock()
-	lv.rebuildFiltered()
+	lv.rebuildFilteredLocked()
 }
 
 // Clear removes all log lines.
 func (lv *LogViewer) Clear() {
 	lv.mu.Lock()
+	defer lv.mu.Unlock()
 	lv.allLines = lv.allLines[:0]
-	lv.mu.Unlock()
-	lv.rebuildFiltered()
+	lv.rebuildFilteredLocked()
 }
 
 // Lines returns a snapshot of all lines currently stored.
@@ -167,6 +167,8 @@ func (lv *LogViewer) KeyBindings() []KeyBind {
 
 // SetSize implements Component.
 func (lv *LogViewer) SetSize(w, h int) {
+	lv.mu.Lock()
+	defer lv.mu.Unlock()
 	lv.width = w
 	lv.height = h
 
@@ -278,13 +280,16 @@ func (lv *LogViewer) cycleLevel() {
 
 func (lv *LogViewer) rebuildFiltered() {
 	lv.mu.Lock()
-	src := make([]LogLine, len(lv.allLines))
-	copy(src, lv.allLines)
-	lv.mu.Unlock()
+	defer lv.mu.Unlock()
+	lv.rebuildFilteredLocked()
+}
 
+// rebuildFilteredLocked rebuilds the filtered line list and content. Caller
+// must hold lv.mu.
+func (lv *LogViewer) rebuildFilteredLocked() {
 	text := strings.ToLower(lv.filterText)
-	filtered := src[:0]
-	for _, line := range src {
+	filtered := lv.allLines[:0:0]
+	for _, line := range lv.allLines {
 		if line.Level < lv.filterLevel {
 			continue
 		}
