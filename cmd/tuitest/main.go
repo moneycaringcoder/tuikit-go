@@ -11,6 +11,8 @@
 // Usage:
 //
 //	tuitest [flags] [packages...]
+//	tuitest record <name> -- <command> [args...]
+//	tuitest replay [--speed 1x] <name>
 //
 // Packages default to "./..." when none are provided. The default reporter
 // is the vitest-style runner already wired into the test code.
@@ -23,6 +25,8 @@
 //	tuitest -junit out/junit.xml -parallel 4  # parallel run + junit output
 //	tuitest -watch                            # re-run on file changes (1s poll)
 //	tuitest diff TestFoo                      # show diff for TestFoo failure
+//	tuitest record dashboard -- ./bin/dashboard
+//	tuitest replay dashboard --speed 2x
 package main
 
 import (
@@ -39,10 +43,32 @@ import (
 )
 
 func main() {
-	// Handle subcommands before flag parsing.
-	if len(os.Args) >= 2 && os.Args[1] == "diff" {
-		runDiffSubcommand(os.Args[2:])
-		return
+	// Sub-commands handled before flag parsing so that subcommand flags
+	// don't collide with the top-level flag set.
+	if len(os.Args) >= 2 {
+		switch os.Args[1] {
+		case "diff":
+			runDiffSubcommand(os.Args[2:])
+			return
+		case "record":
+			os.Exit(runRecord(os.Args[2:]))
+		case "replay":
+			os.Exit(runReplay(os.Args[2:]))
+		case "gen":
+			os.Exit(runGen(os.Args[2:]))
+		case "history":
+			fs := flag.NewFlagSet("history", flag.ExitOnError)
+			keep := fs.Int("keep", defaultKeep, "number of recent runs to display")
+			_ = fs.Parse(os.Args[2:])
+			os.Exit(cmdHistory(*keep))
+		case "report":
+			fs := flag.NewFlagSet("report", flag.ExitOnError)
+			out := fs.String("out", "report.html", "output path for the HTML report")
+			_ = fs.Parse(os.Args[2:])
+			os.Exit(cmdReport(*out))
+		case "coverage":
+			os.Exit(readCoverage())
+		}
 	}
 
 	var (
@@ -53,6 +79,8 @@ func main() {
 		parallel = flag.Int("parallel", 0, "maximum number of tests to run in parallel (maps to go test -parallel)")
 		watch    = flag.Bool("watch", false, "watch the working tree for changes and re-run on modification")
 		verbose  = flag.Bool("v", false, "verbose go test output")
+		keep     = flag.Int("keep", defaultKeep, "max history entries to keep (prune older runs)")
+		coverage = flag.Bool("coverage", false, "run go test with -coverprofile and display a coverage summary panel")
 	)
 	flag.Parse()
 
@@ -61,8 +89,12 @@ func main() {
 		packages = []string{"./..."}
 	}
 
+	if *coverage {
+		os.Exit(runCoverage(packages))
+	}
+
 	runOnce := func() int {
-		code := runGoTest(*filter, *update, *junit, *htmlOut, *parallel, *verbose, packages)
+		code := runGoTest(*filter, *update, *junit, *htmlOut, *parallel, *verbose, *keep, packages)
 		if code != 0 && *watch {
 			printFailureDiffHints()
 		}
@@ -73,18 +105,10 @@ func main() {
 		os.Exit(runOnce())
 	}
 
-	// Watch mode: simple mtime poll on .go files under cwd.
-	fmt.Fprintln(os.Stderr, "[tuitest] watch mode (polling every 1s, Ctrl+C to stop)")
-	lastHash := snapshotTree(".")
-	runOnce()
-	for {
-		time.Sleep(time.Second)
-		h := snapshotTree(".")
-		if h != lastHash {
-			fmt.Fprintln(os.Stderr, "[tuitest] change detected, re-running")
-			lastHash = h
-			runOnce()
-		}
+	// Watch mode: interactive TUI with status bar, filter panel, and log viewer.
+	if err := RunWatchMode(packages); err != nil {
+		fmt.Fprintf(os.Stderr, "[tuitest] watch mode error: %v\n", err)
+		os.Exit(1)
 	}
 }
 
@@ -155,7 +179,7 @@ func printFailureDiffHints() {
 	}
 }
 
-func runGoTest(filter string, update bool, junit, htmlOut string, parallel int, verbose bool, packages []string) int {
+func runGoTest(filter string, update bool, junit, htmlOut string, parallel int, verbose bool, keep int, packages []string) int {
 	args := []string{"test"}
 	if verbose {
 		args = append(args, "-v")
@@ -180,17 +204,43 @@ func runGoTest(filter string, update bool, junit, htmlOut string, parallel int, 
 		}
 	}
 
+	start := time.Now()
 	cmd := exec.Command("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		if exit, ok := err.(*exec.ExitError); ok {
-			return exit.ExitCode()
+	runErr := cmd.Run()
+	duration := time.Since(start).Seconds()
+
+	exitCode := 0
+	failed := 0
+	if runErr != nil {
+		if exit, ok := runErr.(*exec.ExitError); ok {
+			exitCode = exit.ExitCode()
+		} else {
+			fmt.Fprintf(os.Stderr, "[tuitest] run failed: %v\n", runErr)
+			return 1
 		}
-		fmt.Fprintf(os.Stderr, "[tuitest] run failed: %v\n", err)
-		return 1
+		if exitCode != 0 {
+			failed = 1 // at least one failure; exact counts require JSON output parsing
+		}
 	}
-	return 0
+
+	passed := 0
+	if failed == 0 {
+		passed = 1
+	}
+	rec := RunRecord{
+		RunAt:    time.Now(),
+		Duration: duration,
+		Passed:   passed,
+		Failed:   failed,
+		Total:    passed + failed,
+		Packages: packages,
+	}
+	// Best-effort: ignore history write errors so tests still work without a writable FS.
+	_ = writeHistory(rec, keep)
+
+	return exitCode
 }
 
 // snapshotTree returns a coarse hash of .go file modification times under
