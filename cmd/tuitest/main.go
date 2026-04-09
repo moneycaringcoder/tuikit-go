@@ -32,6 +32,15 @@ import (
 )
 
 func main() {
+	// Dispatch subcommands before the default flag set is parsed so that
+	// subcommand flags don't collide with the top-level flag set.
+	if len(os.Args) >= 2 {
+		switch os.Args[1] {
+		case "gen":
+			os.Exit(runGen(os.Args[2:]))
+		}
+	}
+
 	var (
 		filter   = flag.String("filter", "", "run only tests matching regexp (maps to go test -run)")
 		update   = flag.Bool("update", false, "regenerate tuitest snapshots (passes -tuitest.update to tests)")
