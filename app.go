@@ -374,6 +374,15 @@ func (a *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.toasts.dismissAt(msg.index)
 		}
 		return a, nil
+
+	case animTickMsg:
+		return a.handleAnimTick(msg)
+
+	case SetThemeMsg:
+		a.theme = msg.Theme
+		a.setup()
+		a.resize()
+		return a, nil
 	}
 
 	// Forward unknown messages to all components (for custom app messages)
@@ -425,6 +434,10 @@ func (a *appModel) handleTick(msg TickMsg) (tea.Model, tea.Cmd) {
 
 func (a *appModel) handleAnimTick(msg animTickMsg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
+	// Drive toast slide-in animations at 60fps
+	if a.toasts != nil {
+		a.toasts.tick(msg.time)
+	}
 	cmds = append(cmds, a.broadcastMsg(msg))
 	if cmd := a.animTickCmd(); cmd != nil {
 		cmds = append(cmds, cmd)
@@ -563,8 +576,13 @@ func (a *appModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// 6. User-defined global keybindings with handlers
 	for _, kb := range a.globalBindings {
-		if kb.Key == key && kb.Handler != nil {
-			kb.Handler()
+		if kb.Key == key {
+			if kb.Handler != nil {
+				kb.Handler()
+			}
+			if kb.HandlerCmd != nil {
+				return a, kb.HandlerCmd()
+			}
 			return a, nil
 		}
 	}

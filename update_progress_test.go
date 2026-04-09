@@ -98,3 +98,64 @@ var errTestBoom = &testError{"boom"}
 type testError struct{ msg string }
 
 func (e *testError) Error() string { return e.msg }
+
+func TestUpdateProgress_ShimmerAdvancesOnAnimTick(t *testing.T) {
+	if animDisabled {
+		t.Skip("TUIKIT_NO_ANIM=1 set")
+	}
+	p := NewUpdateProgress("t", "v1", 1000)
+	p.Downloaded = 500
+	before := p.shimmerPhase
+	p.Update(animTickMsg{time: time.Now()})
+	if p.shimmerPhase == before {
+		t.Error("shimmerPhase should advance on animTickMsg")
+	}
+}
+
+func TestUpdateProgress_ShimmerNoAdvanceWhenDone(t *testing.T) {
+	p := NewUpdateProgress("t", "v1", 1000)
+	p.Downloaded = 1000
+	p.Done = true
+	p.Update(animTickMsg{time: time.Now()})
+	if p.shimmerPhase != 0 {
+		t.Error("shimmerPhase should not advance when Done")
+	}
+}
+
+func TestUpdateProgress_ShimmerNoAdvanceWhenDisabled(t *testing.T) {
+	if !animDisabled {
+		t.Skip("TUIKIT_NO_ANIM not set")
+	}
+	p := NewUpdateProgress("t", "v1", 1000)
+	p.Downloaded = 500
+	p.Update(animTickMsg{time: time.Now()})
+	if p.shimmerPhase != 0 {
+		t.Error("shimmerPhase should not advance when TUIKIT_NO_ANIM=1")
+	}
+}
+
+func TestUpdateProgress_RenderBarShimmer(t *testing.T) {
+	if animDisabled {
+		t.Skip("TUIKIT_NO_ANIM=1 set")
+	}
+	p := NewUpdateProgress("t", "v1", 1000)
+	p.Downloaded = 500
+	p.shimmerPhase = 0.5
+	bar := p.renderBar(10, 5)
+	if !strings.Contains(bar, "▓") {
+		t.Errorf("shimmer bar should contain ▓ highlight, got %q", bar)
+	}
+}
+
+func TestUpdateProgress_RenderBarNoShimmerWhenDisabled(t *testing.T) {
+	if !animDisabled {
+		t.Skip("TUIKIT_NO_ANIM not set")
+	}
+	p := NewUpdateProgress("t", "v1", 1000)
+	p.Downloaded = 500
+	p.shimmerPhase = 0.5
+	bar := p.renderBar(10, 5)
+	if strings.Contains(bar, "▓") {
+		t.Errorf("disabled shimmer bar should not contain ▓, got %q", bar)
+	}
+}

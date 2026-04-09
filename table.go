@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 	"unicode"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -79,21 +80,22 @@ type TableOpts struct {
 
 // Table is an adaptive table component with sorting, filtering, and responsive columns.
 type Table struct {
-	columns     []Column
-	rows        []Row
-	visible     []Row // filtered/sorted view of rows
-	opts        TableOpts
-	theme       Theme
-	focused     bool
-	width       int
-	height      int
-	cursor      int
-	offset      int // scroll offset
-	sortCol     int // -1 = no sort
-	sortAsc     bool
-	filtering   bool       // in search mode
-	filterQuery string     // current filter text
-	filterFunc  FilterFunc // predicate filter
+	columns      []Column
+	rows         []Row
+	visible      []Row // filtered/sorted view of rows
+	opts         TableOpts
+	theme        Theme
+	focused      bool
+	width        int
+	height       int
+	cursor       int
+	offset       int // scroll offset
+	sortCol      int // -1 = no sort
+	sortAsc      bool
+	filtering    bool       // in search mode
+	filterQuery  string     // current filter text
+	filterFunc   FilterFunc // predicate filter
+	cursorTween  Tween      // 120ms cursor highlight fade-in
 }
 
 // NewTable creates a new Table component.
@@ -173,6 +175,11 @@ func (t *Table) Update(msg tea.Msg) (Component, tea.Cmd) {
 		return t.handleKey(msg)
 	case tea.MouseMsg:
 		return t.handleMouse(msg)
+	case animTickMsg:
+		if t.cursorTween.Running() {
+			// tween still active — view will re-render automatically
+			return t, nil
+		}
 	}
 	return t, nil
 }
@@ -250,20 +257,24 @@ func (t *Table) handleKey(msg tea.KeyMsg) (Component, tea.Cmd) {
 
 	switch msg.String() {
 	case "up", "k":
+		prevCursor := t.cursor
 		t.cursor--
-		t.clampCursor()
+		t.clampCursorFrom(prevCursor)
 		return t, Consumed()
 	case "down", "j":
+		prevCursor := t.cursor
 		t.cursor++
-		t.clampCursor()
+		t.clampCursorFrom(prevCursor)
 		return t, Consumed()
 	case "home", "g":
+		prevCursor := t.cursor
 		t.cursor = 0
-		t.clampCursor()
+		t.clampCursorFrom(prevCursor)
 		return t, Consumed()
 	case "end", "G":
+		prevCursor := t.cursor
 		t.cursor = len(t.visible) - 1
-		t.clampCursor()
+		t.clampCursorFrom(prevCursor)
 		return t, Consumed()
 	case "ctrl+d":
 		half := (t.height - 2) / 2
@@ -393,8 +404,17 @@ func (t *Table) renderRow(row Row, idx int, cols []Column, origIdxs []int, width
 		rowStyle = t.opts.RowStyler(row, idx, isCursor, t.theme)
 	}
 	if rowStyle == nil && isCursor {
+		bg := lipgloss.Color(t.theme.Cursor)
+		if t.cursorTween.Running() {
+			tval := t.cursorTween.Progress(time.Now())
+			bg = Interpolate[lipgloss.Color](
+				lipgloss.Color(t.theme.Muted),
+				lipgloss.Color(t.theme.Cursor),
+				tval, EaseOutCubic,
+			)
+		}
 		cs := lipgloss.NewStyle().
-			Background(lipgloss.Color(t.theme.Cursor)).
+			Background(bg).
 			Foreground(lipgloss.Color(t.theme.TextInverse))
 		rowStyle = &cs
 	}
@@ -633,7 +653,10 @@ func (t *Table) cycleSort() {
 }
 
 func (t *Table) clampCursor() {
-	prev := t.cursor
+	t.clampCursorFrom(t.cursor)
+}
+
+func (t *Table) clampCursorFrom(prev int) {
 	if t.cursor < 0 {
 		t.cursor = 0
 	}
@@ -645,8 +668,12 @@ func (t *Table) clampCursor() {
 		t.cursor = maxCursor
 	}
 
-	if t.cursor != prev && t.opts.OnCursorChange != nil && t.cursor < len(t.visible) {
-		t.opts.OnCursorChange(t.visible[t.cursor], t.cursor)
+	if t.cursor != prev {
+		t.cursorTween = Tween{Duration: 120 * time.Millisecond}
+		t.cursorTween.Start(time.Now())
+		if t.opts.OnCursorChange != nil && t.cursor < len(t.visible) {
+			t.opts.OnCursorChange(t.visible[t.cursor], t.cursor)
+		}
 	}
 
 	visibleRows := t.height - 2

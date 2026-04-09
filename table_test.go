@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -378,5 +379,43 @@ func TestTableRowStylerBackgroundCoversContent(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("could not find any line containing 'Alice' in table view")
+	}
+}
+
+
+func TestTable_CursorTweenStartsOnMove(t *testing.T) {
+	if animDisabled {
+		t.Skip("TUIKIT_NO_ANIM=1 set")
+	}
+	tbl := NewTable(
+		[]Column{{Title: "Name", Width: 1}},
+		[]Row{{"a"}, {"b"}, {"c"}},
+		TableOpts{},
+	)
+	tbl.SetSize(40, 10)
+	tbl.SetFocused(true)
+	tbl.handleKey(tea.KeyMsg{Type: tea.KeyDown})
+	if !tbl.cursorTween.Running() {
+		t.Error("cursorTween should be running after cursor move")
+	}
+}
+
+func TestTable_CursorTweenSnapOnNoAnim(t *testing.T) {
+	if !animDisabled {
+		t.Skip("TUIKIT_NO_ANIM not set")
+	}
+	tbl := NewTable(
+		[]Column{{Title: "Name", Width: 1}},
+		[]Row{{"a"}, {"b"}, {"c"}},
+		TableOpts{},
+	)
+	tbl.SetSize(40, 10)
+	tbl.SetFocused(true)
+	tbl.handleKey(tea.KeyMsg{Type: tea.KeyDown})
+	if tbl.cursorTween.Running() {
+		t.Error("cursorTween should not run when TUIKIT_NO_ANIM=1")
+	}
+	if p := tbl.cursorTween.Progress(time.Now()); p != 1 {
+		t.Errorf("snap progress = %v, want 1", p)
 	}
 }

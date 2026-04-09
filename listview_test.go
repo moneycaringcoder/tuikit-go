@@ -354,3 +354,30 @@ func TestListView_InitReturnsNil(t *testing.T) {
 		t.Error("Init should return nil")
 	}
 }
+
+func TestListView_CursorTweenStartsOnMove(t *testing.T) {
+	if animDisabled {
+		t.Skip("TUIKIT_NO_ANIM=1 set")
+	}
+	lv := newTestListView(sampleItems(5))
+	lv.SetFocused(true)
+	lv.HandleKey(tea.KeyMsg{Type: tea.KeyDown})
+	if !lv.cursorTween.Running() {
+		t.Error("cursorTween should be running after cursor move")
+	}
+}
+
+func TestListView_CursorTweenSnapOnNoAnim(t *testing.T) {
+	if !animDisabled {
+		t.Skip("TUIKIT_NO_ANIM not set")
+	}
+	lv := newTestListView(sampleItems(5))
+	lv.SetFocused(true)
+	lv.HandleKey(tea.KeyMsg{Type: tea.KeyDown})
+	if lv.cursorTween.Running() {
+		t.Error("cursorTween should not run when TUIKIT_NO_ANIM=1")
+	}
+	if p := lv.cursorTween.Progress(time.Now()); p != 1 {
+		t.Errorf("snap progress = %v, want 1", p)
+	}
+}

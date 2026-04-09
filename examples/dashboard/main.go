@@ -260,6 +260,16 @@ func main() {
 	})
 
 	var app *tuikit.App
+	// Theme cycling: ctrl+t cycles through all registered presets.
+	themeNames := []string{"default"}
+	themeList := []tuikit.Theme{tuikit.DefaultTheme()}
+	for name, th := range tuikit.Presets() {
+		themeNames = append(themeNames, name)
+		themeList = append(themeList, th)
+	}
+	themeIdx := 0
+	_ = themeNames
+
 	app = tuikit.NewApp(
 		tuikit.WithTheme(tuikit.DefaultTheme()),
 		tuikit.WithLayout(&tuikit.DualPane{
@@ -272,7 +282,7 @@ func main() {
 		}),
 		tuikit.WithStatusBar(
 			func() string {
-				return fmt.Sprintf(" ? help  / search  s sort  c config  f filter[%s]  p panel  q quit", filterModes[filterIdx])
+				return fmt.Sprintf(" ? help  / search  s sort  c config  f filter[%s]  ctrl+t theme  p panel  q quit", filterModes[filterIdx])
 			},
 			func() string { return "42 active deliveries  Galactic Pizza Corp " },
 		),
@@ -318,6 +328,15 @@ func main() {
 			Group: "TOAST",
 			Handler: func() {
 				app.Send(tuikit.ToastMsg{Severity: tuikit.SeverityError, Title: "Delivery Failed", Body: "Lost in wormhole. No pizza.", Duration: 4 * time.Second})
+			},
+		}),
+		tuikit.WithKeyBind(tuikit.KeyBind{
+			Key:   "ctrl+t",
+			Label: "Cycle theme",
+			Group: "VIEW",
+			HandlerCmd: func() tea.Cmd {
+				themeIdx = (themeIdx + 1) % len(themeList)
+				return tuikit.SetThemeCmd(themeList[themeIdx])
 			},
 		}),
 		tuikit.WithMouseSupport(),
