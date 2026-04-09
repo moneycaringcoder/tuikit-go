@@ -244,6 +244,16 @@ func main() {
 	filterModes := []string{"all", "delivered", "lost"}
 	filterIdx := 0
 
+	// Theme cycling
+	themeNames := []string{"default"}
+	themeList := []tuikit.Theme{tuikit.DefaultTheme()}
+	for name, th := range tuikit.Presets() {
+		themeNames = append(themeNames, name)
+		themeList = append(themeList, th)
+	}
+	themeIdx := 0
+	_ = themeNames
+
 	// Set up predicate filter — closure reads filterIdx
 	table.SetFilter(func(row tuikit.Row) bool {
 		if len(row) < 3 {
@@ -286,6 +296,15 @@ func main() {
 				filterIdx = (filterIdx + 1) % len(filterModes)
 				// Re-apply the filter (the closure already reads filterIdx)
 				table.SetRows(rows)
+			},
+		}),
+		tuikit.WithKeyBind(tuikit.KeyBind{
+			Key:        "ctrl+t",
+			Label:      "Cycle theme",
+			Group:      "VIEW",
+			HandlerCmd: func() tea.Cmd {
+				themeIdx = (themeIdx + 1) % len(themeList)
+				return tuikit.SetThemeCmd(themeList[themeIdx])
 			},
 		}),
 		tuikit.WithKeyBind(tuikit.KeyBind{

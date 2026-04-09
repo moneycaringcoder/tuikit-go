@@ -374,6 +374,11 @@ func (a *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.toasts.dismissAt(msg.index)
 		}
 		return a, nil
+	case SetThemeMsg:
+		a.theme = msg.Theme
+		a.setup()
+		a.resize()
+		return a, nil
 	}
 
 	// Forward unknown messages to all components (for custom app messages)
@@ -563,9 +568,15 @@ func (a *appModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// 6. User-defined global keybindings with handlers
 	for _, kb := range a.globalBindings {
-		if kb.Key == key && kb.Handler != nil {
-			kb.Handler()
-			return a, nil
+		if kb.Key == key {
+			if kb.HandlerCmd != nil {
+				cmd := kb.HandlerCmd()
+				return a, cmd
+			}
+			if kb.Handler != nil {
+				kb.Handler()
+				return a, nil
+			}
 		}
 	}
 
