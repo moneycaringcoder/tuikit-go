@@ -11,14 +11,31 @@ The pragmatic TUI toolkit for shipping CLI tools fast. Wraps [Bubble Tea](https:
 - Dark and light themes with semantic color tokens + extensible `Extra` color map
 - Poller for background data with automatic tick-driven refresh
 - **CLI primitives** — Confirm, SelectOne, MultiSelect, Input, Password, Spinner, Progress, and styled message helpers for non-TUI workflows
-- **tuitest** — structured TUI testing framework with virtual terminal, 90+ assertions, screen diffing, golden file support, and vitest-like test reporter
+- **tuitest** — virtual-terminal testing framework with 30+ assertions, screen diffing, golden files, snapshot update, session record/replay, JUnit + HTML reporters, and a vitest-style console runner
 - Utilities: Sparkline, RelativeTime, OpenURL, Hyperlink
-- **Self-update built in** — binary replacement with SHA256 checksum verification, update cache, and Homebrew/Scoop detection. No other Go TUI library ships this.
+- **Self-update built in** — binary replacement with SHA256 checksum verification, skip/forced/notify modes, rollback on verify failure, rate-limit backoff, update channels, and Homebrew/Scoop detection
+- **tuitest CLI** — `go install` or grab a prebuilt binary to run test suites with snapshot update, JUnit/HTML reports, filtering, parallelism, and watch mode
 
 ## Install
 
+Library:
+
 ```bash
 go get github.com/moneycaringcoder/tuikit-go
+```
+
+`tuitest` CLI (optional, for running tuitest-based test suites):
+
+```bash
+# Homebrew
+brew install moneycaringcoder/tap/tuitest
+
+# Scoop
+scoop bucket add moneycaringcoder https://github.com/moneycaringcoder/scoop-bucket
+scoop install tuitest
+
+# Go
+go install github.com/moneycaringcoder/tuikit-go/cmd/tuitest@latest
 ```
 
 ## Quick Start
@@ -316,6 +333,39 @@ func TestMyApp(t *testing.T) {
 }
 ```
 
+### tuitest CLI
+
+The `tuitest` binary is a thin wrapper around `go test` that adds flags for snapshot updates, JUnit/HTML reports, filtering, parallelism, and watch mode.
+
+**Install:**
+
+```bash
+# Homebrew
+brew install moneycaringcoder/tap/tuitest
+
+# Scoop
+scoop bucket add moneycaringcoder https://github.com/moneycaringcoder/scoop-bucket
+scoop install tuitest
+
+# Go
+go install github.com/moneycaringcoder/tuikit-go/cmd/tuitest@latest
+```
+
+Prebuilt linux/darwin/windows (amd64 + arm64) archives are attached to every [GitHub Release](https://github.com/moneycaringcoder/tuikit-go/releases).
+
+**Usage:**
+
+```bash
+tuitest                                    # go test ./...
+tuitest -filter TestHarness ./tuitest/...  # run tests matching a regexp
+tuitest -update ./tuitest/...              # regenerate golden snapshots
+tuitest -junit out/junit.xml -parallel 4   # parallel run + JUnit report
+tuitest -html out/report.html              # HTML report
+tuitest -watch                             # re-run on file changes (1s poll)
+```
+
+The `-update` flag drives the same `-tuitest.update` hook that `AssertGolden` and `AssertScreenSnapshot` use. JUnit and HTML reporters are opt-in via the `JUnitReporter` / `HTMLReporter` wiring in `tuitest`.
+
 **Vitest-like test reporter** — run with `-v` for grouped, color-coded output:
 
 ```
@@ -425,7 +475,11 @@ type Themed interface {
 
 ## Self-Update
 
-tuikit-go ships a complete binary self-update system. No other Go TUI library includes this. It checks GitHub Releases, verifies SHA256 checksums against GoReleaser's `checksums.txt`, replaces the running binary atomically, and detects Homebrew/Scoop installs to skip auto-replace when the package manager owns the binary.
+tuikit-go ships a binary self-update system designed for GoReleaser-published CLIs. It checks GitHub Releases, verifies SHA256 checksums against GoReleaser's `checksums.txt`, replaces the running binary atomically, rolls back on verify failure, and detects Homebrew/Scoop installs so package-managed binaries are left alone.
+
+**Modes:** `UpdateNotify` (non-blocking banner), `UpdateBlocking` (prompt before TUI starts), `UpdateForced` (full-screen gate for mandatory upgrades), `UpdateSilent` (check + cache, no UI), `UpdateDryRun` (verify without replacing).
+
+**Extras:** skip-version support, `minimum_version:` markers in release notes auto-promote to forced, rate-limit backoff, update channels (stable/beta/nightly), and `TUIKIT_UPDATE_DISABLE=1` kill switch.
 
 ### Built-in app integration
 
