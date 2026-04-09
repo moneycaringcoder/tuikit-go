@@ -236,6 +236,75 @@ func TestSelfUpdateCosignVerification(t *testing.T) {
 	}
 }
 
+func TestSelfUpdateCosignMissingSigAsset(t *testing.T) {
+	// B4: public key set but no .sig asset in release → verification failure.
+	pub, _ := generateTestKeyPair(t)
+
+	binaryContent := []byte("fake binary missing sig")
+	ext := "tar.gz"
+	binaryFile := "myapp"
+	if runtime.GOOS == "windows" {
+		ext = "zip"
+		binaryFile = "myapp.exe"
+	}
+	assetName := fmt.Sprintf("myapp_1.0.0_%s_%s.%s", runtime.GOOS, runtime.GOARCH, ext)
+
+	var archive []byte
+	if ext == "zip" {
+		archive = createTestZip(t, binaryFile, binaryContent)
+	} else {
+		archive = createTestTarGz(t, binaryFile, binaryContent)
+	}
+	checksumFile := makeChecksumFile(archive, assetName)
+
+	var srvURL string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repos/owner/repo/releases/latest":
+			w.Header().Set("Content-Type", "application/json")
+			// No .sig asset listed.
+			fmt.Fprintf(w, `{
+				"tag_name": "v1.0.0",
+				"html_url": "https://github.com/owner/repo/releases/tag/v1.0.0",
+				"body": "",
+				"assets": [
+					{"name": %q, "browser_download_url": %q},
+					{"name": "checksums.txt", "browser_download_url": %q}
+				]
+			}`,
+				assetName, srvURL+"/download/asset",
+				srvURL+"/download/checksums",
+			)
+		case "/download/asset":
+			w.Write(archive)
+		case "/download/checksums":
+			w.Write(checksumFile)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	srvURL = srv.URL
+
+	cfg := tuikit.UpdateConfig{
+		Owner:           "owner",
+		Repo:            "repo",
+		BinaryName:      "myapp",
+		Version:         "v0.9.0",
+		CacheDir:        t.TempDir(),
+		APIBaseURL:      srv.URL,
+		CosignPublicKey: pubKeyToPEM(pub),
+	}
+
+	err := tuikit.SelfUpdate(cfg)
+	if err == nil {
+		t.Fatal("expected error when .sig asset is missing, got nil")
+	}
+	if !strings.Contains(err.Error(), "finding signature asset") {
+		t.Errorf("error %q should mention finding signature asset", err.Error())
+	}
+}
+
 func TestSelfUpdateCosignSkippedWhenKeyEmpty(t *testing.T) {
 	binaryContent := []byte("fake binary no cosign")
 	ext := "tar.gz"
