@@ -152,6 +152,8 @@ type appModel struct {
 	animationsEnabled bool
 	signalBus         *signalBus
 	signals           []AnySignal
+	hotReloadPath     string
+	hotReload         *ThemeHotReload
 }
 
 // trackSignal registers a signal with the app's bus so its Set calls fire
@@ -412,6 +414,24 @@ func (a *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.theme = msg.Theme
 		a.setup()
 		a.resize()
+		return a, nil
+
+	case ThemeHotReloadMsg:
+		a.theme = msg.Theme
+		a.setup()
+		a.resize()
+		return a, nil
+
+	case ThemeHotReloadErrMsg:
+		if a.toasts != nil {
+			a.toasts.theme = a.theme
+			a.toasts.add(ToastMsg{
+				Severity: SeverityError,
+				Title:    "Theme reload failed",
+				Body:     msg.Err.Error(),
+				Duration: 5 * time.Second,
+			})
+		}
 		return a, nil
 
 	case signalFlushMsg:
@@ -879,6 +899,18 @@ func (a *App) Run() error {
 	if a.model.signalBus != nil {
 		prog := a.program
 		a.model.signalBus.setSender(func(msg tea.Msg) { prog.Send(msg) })
+	}
+	if a.model.hotReloadPath != "" {
+		prog := a.program
+		hr, hrErr := NewThemeHotReload(a.model.hotReloadPath, func(msg interface{}) {
+			prog.Send(msg)
+		})
+		if hrErr != nil {
+			fmt.Fprintf(os.Stderr, "theme hot-reload: %v\n", hrErr)
+		} else {
+			a.model.hotReload = hr
+			defer hr.Stop()
+		}
 	}
 	_, err := a.program.Run()
 	if err != nil {
