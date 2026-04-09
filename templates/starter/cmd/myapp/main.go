@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	tuikit "github.com/moneycaringcoder/tuikit-go"
+	"github.com/OWNER/myapp/internal/updatewire"
 )
 
 func main() {
@@ -43,6 +44,7 @@ func main() {
 			func() string { return fmt.Sprintf(" %d items ", len(items)) },
 		),
 		tuikit.WithHelp(),
+		tuikit.WithAutoUpdate(updatewire.Config()),
 	)
 
 	if err := app.Run(); err != nil {
