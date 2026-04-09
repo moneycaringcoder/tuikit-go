@@ -22,7 +22,9 @@ type Component interface {
 
 	// Update handles a message and returns the updated component and command.
 	// Return Consumed() to signal the App that this key was handled.
-	Update(msg tea.Msg) (Component, tea.Cmd)
+	// ctx carries the ambient Theme, Size, Focus, Hotkeys, Clock, and Logger
+	// for the current dispatch.
+	Update(msg tea.Msg, ctx Context) (Component, tea.Cmd)
 
 	// View renders the component to a string.
 	View() string
