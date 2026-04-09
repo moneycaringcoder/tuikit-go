@@ -52,6 +52,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Install: install.md
   - Getting Started:
     - guides/quickstart.md
     - guides/app-structure.md
@@ -64,8 +65,17 @@ nav:
     - components/statusbar.md
     - components/tabs.md
     - components/picker.md
+    - components/toasts.md
+    - components/progress.md
     - components/help.md
+  - Themes: themes.md
   - Reference:
     - guides/cli-primitives.md
     - guides/self-update.md
     - guides/layout.md
+    - cookbook.md
+    - api-reference.md
+  - Project:
+    - changelog.md
+    - roadmap.md
+    - showcase.md
