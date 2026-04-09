@@ -99,13 +99,13 @@ type Sized struct {
 	C Component // The wrapped component.
 }
 
-func (s Sized) Init() tea.Cmd                        { return s.C.Init() }
+func (s Sized) Init() tea.Cmd                           { return s.C.Init() }
 func (s Sized) Update(msg tea.Msg) (Component, tea.Cmd) { c, cmd := s.C.Update(msg); return Sized{W: s.W, C: c}, cmd }
-func (s Sized) View() string                         { return s.C.View() }
-func (s Sized) KeyBindings() []KeyBind               { return s.C.KeyBindings() }
-func (s Sized) SetSize(w, h int)                     { s.C.SetSize(w, h) }
-func (s Sized) Focused() bool                        { return s.C.Focused() }
-func (s Sized) SetFocused(f bool)                    { s.C.SetFocused(f) }
+func (s Sized) View() string                            { return s.C.View() }
+func (s Sized) KeyBindings() []KeyBind                  { return s.C.KeyBindings() }
+func (s Sized) SetSize(w, h int)                        { s.C.SetSize(w, h) }
+func (s Sized) Focused() bool                           { return s.C.Focused() }
+func (s Sized) SetFocused(f bool)                       { s.C.SetFocused(f) }
 
 // Flex wraps a Component that grows proportionally to fill remaining space.
 // Grow is the relative weight — a child with Grow=2 gets twice as much space
@@ -115,13 +115,13 @@ type Flex struct {
 	C    Component // The wrapped component.
 }
 
-func (f Flex) Init() tea.Cmd                        { return f.C.Init() }
+func (f Flex) Init() tea.Cmd                           { return f.C.Init() }
 func (f Flex) Update(msg tea.Msg) (Component, tea.Cmd) { c, cmd := f.C.Update(msg); return Flex{Grow: f.Grow, C: c}, cmd }
-func (f Flex) View() string                         { return f.C.View() }
-func (f Flex) KeyBindings() []KeyBind               { return f.C.KeyBindings() }
-func (f Flex) SetSize(w, h int)                     { f.C.SetSize(w, h) }
-func (f Flex) Focused() bool                        { return f.C.Focused() }
-func (f Flex) SetFocused(foc bool)                  { f.C.SetFocused(foc) }
+func (f Flex) View() string                            { return f.C.View() }
+func (f Flex) KeyBindings() []KeyBind                  { return f.C.KeyBindings() }
+func (f Flex) SetSize(w, h int)                        { f.C.SetSize(w, h) }
+func (f Flex) Focused() bool                           { return f.C.Focused() }
+func (f Flex) SetFocused(foc bool)                     { f.C.SetFocused(foc) }
 
 // flexItem is an internal resolved slot used during layout computation.
 type flexItem struct {
@@ -379,7 +379,6 @@ func resolveHBoxSlots(h *HBox) []flexItem {
 		available = 0
 	}
 
-	// Deduct fixed widths
 	totalGrow := 0
 	fixed := 0
 	for _, it := range items {
@@ -395,19 +394,15 @@ func resolveHBoxSlots(h *HBox) []flexItem {
 		flexSpace = 0
 	}
 
-	// Assign widths to flex children
 	if totalGrow > 0 {
 		distributed := 0
-		flexCount := 0
 		for i, it := range items {
 			if it.grow > 0 {
-				flexCount++
 				w := (flexSpace * it.grow) / totalGrow
 				items[i].fixedSz = w
 				distributed += w
 			}
 		}
-		// Give remainder to last flex child
 		rem := flexSpace - distributed
 		if rem > 0 {
 			for i := len(items) - 1; i >= 0; i-- {
@@ -478,13 +473,10 @@ func resolveVBoxSlots(v *VBox) []flexItem {
 }
 
 // childHeight returns the height to pass to an HBox child given cross-axis alignment.
-// mainSz is the child's computed width (unused here, just for clarity). crossSz is total height.
 func childHeight(align FlexAlign, totalH, _ int) int {
 	if align == FlexAlignStretch {
 		return totalH
 	}
-	// For non-stretch, child decides its own height; we pass full height and let
-	// it render what it wants. The render step clips or pads as needed.
 	return totalH
 }
 
@@ -499,19 +491,15 @@ func childWidth(align FlexAlign, totalW, _ int) int {
 // renderHBox renders an HBox's children into a single joined string.
 func renderHBox(h *HBox, slots []flexItem) string {
 	views := make([]string, 0, len(slots))
-	for i, slot := range slots {
+	for _, slot := range slots {
 		if slot.c == nil {
 			continue
 		}
-		// Ensure child has correct size before rendering
 		childH := h.height
 		slot.c.SetSize(slot.fixedSz, childH)
 		raw := slot.c.View()
-
-		// Apply cross-axis alignment within column
 		view := alignCrossHBox(raw, slot.fixedSz, childH, h.Align)
 		views = append(views, view)
-		_ = i
 	}
 
 	if len(views) == 0 {
@@ -519,7 +507,7 @@ func renderHBox(h *HBox, slots []flexItem) string {
 	}
 
 	gap := strings.Repeat(" ", h.Gap)
-	return applyJustifyHBox(views, h.Justify, h.width, h.height, h.Gap, gap)
+	return applyJustifyHBox(views, h.Justify, h.width, h.Gap, gap)
 }
 
 // renderVBox renders a VBox's children into a single joined string.
@@ -532,7 +520,7 @@ func renderVBox(v *VBox, slots []flexItem) string {
 		childW := v.width
 		slot.c.SetSize(childW, slot.fixedSz)
 		raw := slot.c.View()
-		view := alignCrossVBox(raw, childW, slot.fixedSz, v.Align)
+		view := alignCrossVBox(raw, childW, v.Align)
 		views = append(views, view)
 	}
 
@@ -546,7 +534,6 @@ func renderVBox(v *VBox, slots []flexItem) string {
 // alignCrossHBox handles vertical (cross-axis) alignment of a single HBox child cell.
 func alignCrossHBox(content string, w, totalH int, align FlexAlign) string {
 	lines := strings.Split(content, "\n")
-	// Pad each line to exact width
 	padded := make([]string, len(lines))
 	for i, l := range lines {
 		padded[i] = lipgloss.NewStyle().Width(w).Render(l)
@@ -554,7 +541,6 @@ func alignCrossHBox(content string, w, totalH int, align FlexAlign) string {
 
 	switch align {
 	case FlexAlignStretch:
-		// Pad to totalH
 		for len(padded) < totalH {
 			padded = append(padded, lipgloss.NewStyle().Width(w).Render(""))
 		}
@@ -564,34 +550,34 @@ func alignCrossHBox(content string, w, totalH int, align FlexAlign) string {
 			top := pad / 2
 			bottom := pad - top
 			empty := lipgloss.NewStyle().Width(w).Render("")
-			top_lines := make([]string, top)
-			for i := range top_lines {
-				top_lines[i] = empty
+			topLines := make([]string, top)
+			for i := range topLines {
+				topLines[i] = empty
 			}
-			bot_lines := make([]string, bottom)
-			for i := range bot_lines {
-				bot_lines[i] = empty
+			botLines := make([]string, bottom)
+			for i := range botLines {
+				botLines[i] = empty
 			}
-			padded = append(top_lines, append(padded, bot_lines...)...)
+			padded = append(topLines, append(padded, botLines...)...)
 		}
 	case FlexAlignEnd:
 		pad := totalH - len(padded)
 		if pad > 0 {
 			empty := lipgloss.NewStyle().Width(w).Render("")
-			top_lines := make([]string, pad)
-			for i := range top_lines {
-				top_lines[i] = empty
+			topLines := make([]string, pad)
+			for i := range topLines {
+				topLines[i] = empty
 			}
-			padded = append(top_lines, padded...)
+			padded = append(topLines, padded...)
 		}
-	default: // FlexAlignStart — no top padding needed
+	default: // FlexAlignStart
 	}
 
 	return strings.Join(padded, "\n")
 }
 
 // alignCrossVBox handles horizontal (cross-axis) alignment of a single VBox child.
-func alignCrossVBox(content string, totalW, _ int, align FlexAlign) string {
+func alignCrossVBox(content string, totalW int, align FlexAlign) string {
 	lines := strings.Split(content, "\n")
 	result := make([]string, len(lines))
 	for i, l := range lines {
@@ -608,13 +594,12 @@ func alignCrossVBox(content string, totalW, _ int, align FlexAlign) string {
 }
 
 // applyJustifyHBox places the column views side-by-side with justify distribution.
-func applyJustifyHBox(views []string, justify FlexJustify, totalW, totalH, gap int, gapStr string) string {
+func applyJustifyHBox(views []string, justify FlexJustify, totalW, gap int, gapStr string) string {
 	n := len(views)
 	if n == 0 {
 		return ""
 	}
 
-	// Split each view into lines for side-by-side joining
 	lineSlices := make([][]string, n)
 	maxLines := 0
 	for i, v := range views {
@@ -624,17 +609,13 @@ func applyJustifyHBox(views []string, justify FlexJustify, totalW, totalH, gap i
 		}
 	}
 
-	// Pad all slices to same height
 	for i, ls := range lineSlices {
 		for len(ls) < maxLines {
-			// Use the width of the first line as padding width (lipgloss already set it)
 			ls = append(ls, "")
 		}
 		lineSlices[i] = ls
 	}
 
-	// Compute leading/between spaces for justify modes
-	// Width of each view is already baked in by lipgloss.Width
 	usedW := 0
 	for _, v := range views {
 		if len(v) > 0 {
@@ -702,7 +683,6 @@ func applyJustifyVBox(views []string, justify FlexJustify, totalW, totalH, gap i
 		return ""
 	}
 
-	// Count total lines used
 	usedLines := 0
 	for _, v := range views {
 		usedLines += strings.Count(v, "\n") + 1
@@ -748,8 +728,7 @@ func applyJustifyVBox(views []string, justify FlexJustify, totalW, totalH, gap i
 	}
 
 	var parts []string
-	for i := range leading {
-		_ = i
+	for range leading {
 		parts = append(parts, blankLine)
 	}
 	for i, v := range views {

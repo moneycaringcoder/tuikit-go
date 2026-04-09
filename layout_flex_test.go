@@ -8,6 +8,7 @@ import (
 )
 
 // flexStub is a minimal Component for flex layout tests.
+// Named distinctly to avoid conflicts with stubComponent in app_test.go.
 type flexStub struct {
 	label   string
 	width   int
@@ -17,7 +18,7 @@ type flexStub struct {
 
 func newFlexStub(label string) *flexStub { return &flexStub{label: label} }
 
-func (s *flexStub) Init() tea.Cmd                            { return nil }
+func (s *flexStub) Init() tea.Cmd                           { return nil }
 func (s *flexStub) Update(msg tea.Msg) (Component, tea.Cmd) { return s, nil }
 func (s *flexStub) View() string {
 	line := s.label
@@ -26,10 +27,10 @@ func (s *flexStub) View() string {
 	}
 	return line
 }
-func (s *flexStub) KeyBindings() []KeyBind    { return nil }
-func (s *flexStub) SetSize(w, h int)          { s.width = w; s.height = h }
-func (s *flexStub) Focused() bool             { return s.focused }
-func (s *flexStub) SetFocused(focused bool)   { s.focused = focused }
+func (s *flexStub) KeyBindings() []KeyBind  { return nil }
+func (s *flexStub) SetSize(w, h int)        { s.width = w; s.height = h }
+func (s *flexStub) Focused() bool           { return s.focused }
+func (s *flexStub) SetFocused(focused bool) { s.focused = focused }
 
 // --- HBox tests ---
 
@@ -42,16 +43,9 @@ func TestHBoxGap(t *testing.T) {
 	}
 	box.SetSize(24, 1)
 	view := box.View()
-	// Should contain at least 2 spaces between A and B
 	if !strings.Contains(view, "A") || !strings.Contains(view, "B") {
 		t.Errorf("HBox gap view missing children: %q", view)
 	}
-	// gap of 2 means 2 spaces between columns
-	idx := strings.Index(view, "A")
-	if idx < 0 {
-		t.Fatal("A not found in view")
-	}
-	// After A's column (width 10), gap (2), then B's column
 }
 
 func TestHBoxFlexGrow(t *testing.T) {
@@ -62,7 +56,6 @@ func TestHBoxFlexGrow(t *testing.T) {
 		Items: []Component{Flex{Grow: 1, C: a}, Flex{Grow: 1, C: b}},
 	}
 	box.SetSize(40, 5)
-	// Each flex child should get 20 columns
 	if a.width != 20 {
 		t.Errorf("expected flex child width 20, got %d", a.width)
 	}
@@ -79,7 +72,6 @@ func TestHBoxFlexGrowUnequal(t *testing.T) {
 		Items: []Component{Flex{Grow: 1, C: a}, Flex{Grow: 3, C: b}},
 	}
 	box.SetSize(40, 5)
-	// grow1 = 10, grow2 = 30
 	if a.width != 10 {
 		t.Errorf("expected grow=1 child width 10, got %d", a.width)
 	}
@@ -143,7 +135,6 @@ func TestHBoxJustifyCenter(t *testing.T) {
 	box.SetSize(11, 1)
 	view := box.View()
 	firstLine := strings.Split(view, "\n")[0]
-	// Should have at least 4 leading spaces for a width-1 item in 11 cols
 	trimmed := strings.TrimLeft(firstLine, " ")
 	leading := len(firstLine) - len(trimmed)
 	if leading < 4 {
@@ -227,7 +218,6 @@ func TestVBoxGap(t *testing.T) {
 	box.SetSize(10, 10)
 	view := box.View()
 	lines := strings.Split(view, "\n")
-	// There should be blank lines between A and B
 	hasBlank := false
 	for _, l := range lines {
 		if strings.TrimSpace(l) == "" {
@@ -295,7 +285,6 @@ func TestVBoxJustifyCenter(t *testing.T) {
 	box.SetSize(10, 9)
 	view := box.View()
 	lines := strings.Split(view, "\n")
-	// A should not be first line
 	if len(lines) > 0 && strings.Contains(lines[0], "A") {
 		t.Errorf("VBox JustifyCenter: A should not be on first line, got %v", lines)
 	}
@@ -361,11 +350,11 @@ func TestHBoxNestedVBox(t *testing.T) {
 	if a.width != 10 {
 		t.Errorf("nested: outer fixed child width should be 10, got %d", a.width)
 	}
-	// inner should receive 19 width (30 - 10 - 1 gap)
+	// inner gets 30 - 10 - 1 gap = 19
 	if inner.width != 19 {
 		t.Errorf("nested: inner VBox width should be 19, got %d", inner.width)
 	}
-	// inner children should each get height 5
+	// inner children each get height 5
 	if b.height != 5 || c.height != 5 {
 		t.Errorf("nested: inner children height should be 5, got b=%d c=%d", b.height, c.height)
 	}
@@ -387,19 +376,18 @@ func TestVBoxNestedHBox(t *testing.T) {
 	if a.height != 2 {
 		t.Errorf("nested: fixed header height should be 2, got %d", a.height)
 	}
-	// inner gets height 10
 	if inner.height != 10 {
 		t.Errorf("nested: inner HBox height should be 10, got %d", inner.height)
 	}
-	// each col gets width 10
 	if b.width != 10 || c.width != 10 {
 		t.Errorf("nested: inner cols width should be 10, got b=%d c=%d", b.width, c.width)
 	}
 }
 
-// --- DualPane composition ---
+// --- DualPane composition (CRITICAL: must not break existing DualPane) ---
 
-// TestDualPaneInsideHBox proves existing DualPane still works when composed inside HBox.
+// TestDualPaneInsideHBox proves existing DualPane still works when composed
+// inside an HBox — the flex layout must not break DualPane.
 func TestDualPaneInsideHBox(t *testing.T) {
 	main := newFlexStub("main")
 	side := newFlexStub("side")
@@ -411,10 +399,6 @@ func TestDualPaneInsideHBox(t *testing.T) {
 		SideRight:    true,
 	}
 
-	// Wrap DualPane in an HBox — DualPane isn't a Component itself, so we
-	// use a stub that delegates sizing to prove composition.
-	// Here we test that HBox correctly sizes children and that DualPane's
-	// compute still works independently.
 	dpMain, dpSide, visible := dp.compute(80, 20)
 	if !visible {
 		t.Fatal("DualPane side should be visible at width 80")
@@ -426,7 +410,7 @@ func TestDualPaneInsideHBox(t *testing.T) {
 		t.Errorf("DualPane side width: expected 20, got %d", dpSide.width)
 	}
 
-	// Now wrap a stub (acting as a "dashboard" using DualPane internally) inside HBox
+	// Wrap a "dashboard" stub inside HBox to prove flex + DualPane coexist
 	dashboard := newFlexStub("dashboard")
 	toolbar := newFlexStub("toolbar")
 	hbox := &HBox{
