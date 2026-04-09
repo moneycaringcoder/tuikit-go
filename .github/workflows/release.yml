@@ -20,7 +20,9 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+      - uses: goreleaser/goreleaser-action@v6
         with:
-          generate_release_notes: true
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GORELEASER_TAP_TOKEN }}

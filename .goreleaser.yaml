@@ -1,0 +1,91 @@
+version: 2
+
+project_name: tuitest
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: ./cmd/tuitest
+    binary: tuitest
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: "checksums.txt"
+
+brews:
+  - repository:
+      owner: moneycaringcoder
+      name: homebrew-tap
+    directory: Formula
+    homepage: "https://github.com/moneycaringcoder/tuikit-go"
+    description: "CLI runner for tuitest — the TUI testing framework in tuikit-go"
+    license: "MIT"
+    test: |
+      system "#{bin}/tuitest", "-h"
+
+scoops:
+  - repository:
+      owner: moneycaringcoder
+      name: scoop-bucket
+    homepage: "https://github.com/moneycaringcoder/tuikit-go"
+    description: "CLI runner for tuitest — the TUI testing framework in tuikit-go"
+    license: "MIT"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
+      - "^test:"
+      - "^ci:"
+      - "Merge pull request"
+      - "Merge branch"
+
+release:
+  github:
+    owner: moneycaringcoder
+    name: tuikit-go
+  draft: false
+  prerelease: auto
+  name_template: "{{.Tag}}"
+  header: |
+    ## tuitest {{.Tag}}
+
+    CLI runner for tuitest-powered Go test suites. Ships alongside the
+    [tuikit-go](https://github.com/moneycaringcoder/tuikit-go) library.
+
+    ### Install
+
+    ```bash
+    # Homebrew
+    brew install moneycaringcoder/tap/tuitest
+
+    # Scoop
+    scoop bucket add moneycaringcoder https://github.com/moneycaringcoder/scoop-bucket
+    scoop install tuitest
+
+    # Go
+    go install github.com/moneycaringcoder/tuikit-go/cmd/tuitest@{{.Tag}}
+    ```
+
+    Or download a prebuilt archive from the assets below.
