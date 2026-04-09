@@ -146,10 +146,11 @@ type ReleaseAsset struct {
 
 // Release represents a GitHub release.
 type Release struct {
-	TagName string         `json:"tag_name"`
-	HTMLURL string         `json:"html_url"`
-	Body    string         `json:"body"`
-	Assets  []ReleaseAsset `json:"assets"`
+	TagName    string         `json:"tag_name"`
+	HTMLURL    string         `json:"html_url"`
+	Body       string         `json:"body"`
+	Assets     []ReleaseAsset `json:"assets"`
+	Prerelease bool           `json:"prerelease"`
 }
 
 // FetchLatestRelease fetches the latest release from GitHub.
@@ -458,8 +459,8 @@ func CheckForUpdate(cfg UpdateConfig) (*UpdateResult, error) {
 		return result, nil
 	}
 
-	// Fetch from GitHub
-	rel, err := FetchLatestRelease(cfg.githubBaseURL(), cfg.Owner, cfg.Repo)
+	// Fetch from GitHub (channel-aware)
+	rel, err := FetchLatestReleaseForChannel(cfg.githubBaseURL(), cfg.Owner, cfg.Repo, cfg.Channel)
 	if err != nil {
 		return result, nil // network error, skip silently
 	}
