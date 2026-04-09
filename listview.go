@@ -43,15 +43,16 @@ type ListViewOpts[T any] struct {
 // Use it standalone as a registered component, or embed it inside a custom
 // component and delegate via HandleKey and View.
 type ListView[T any] struct {
-	items    []T
-	opts     ListViewOpts[T]
-	theme    Theme
-	focused  bool
-	width    int
-	height   int
-	cursor   int
-	viewport viewport.Model
-	ready    bool
+	items       []T
+	opts        ListViewOpts[T]
+	theme       Theme
+	focused     bool
+	width       int
+	height      int
+	cursor      int
+	viewport    viewport.Model
+	ready       bool
+	cursorTween Tween // 120ms cursor highlight fade-in
 }
 
 // NewListView creates a new ListView with the given options.
@@ -149,6 +150,11 @@ func (l *ListView[T]) Update(msg tea.Msg) (Component, tea.Cmd) {
 	case tea.KeyMsg:
 		cmd := l.HandleKey(msg)
 		return l, cmd
+	case animTickMsg:
+		if l.cursorTween.Running() {
+			l.rebuildContent()
+			return l, nil
+		}
 	}
 	return l, nil
 }
@@ -160,6 +166,7 @@ func (l *ListView[T]) HandleKey(msg tea.KeyMsg) tea.Cmd {
 	case "up", "k":
 		if l.cursor > 0 {
 			l.cursor--
+			l.startCursorTween()
 		}
 		l.rebuildContent()
 		l.ensureCursorVisible()
@@ -167,16 +174,19 @@ func (l *ListView[T]) HandleKey(msg tea.KeyMsg) tea.Cmd {
 	case "down", "j":
 		if l.cursor < len(l.items)-1 {
 			l.cursor++
+			l.startCursorTween()
 		}
 		l.rebuildContent()
 		l.ensureCursorVisible()
 		return Consumed()
 	case "home", "g":
+		l.startCursorTween()
 		l.cursor = 0
 		l.rebuildContent()
 		l.ensureCursorVisible()
 		return Consumed()
 	case "end", "G":
+		l.startCursorTween()
 		l.cursor = max(0, len(l.items)-1)
 		l.rebuildContent()
 		l.ensureCursorVisible()
@@ -287,17 +297,40 @@ func (l *ListView[T]) Focused() bool      { return l.focused }
 func (l *ListView[T]) SetFocused(f bool)   { l.focused = f; l.rebuildContent() }
 func (l *ListView[T]) SetTheme(th Theme)   { l.theme = th }
 
+func (l *ListView[T]) startCursorTween() {
+	l.cursorTween = Tween{Duration: 120 * time.Millisecond}
+	l.cursorTween.Start(time.Now())
+}
+
 func (l *ListView[T]) rebuildContent() {
 	if !l.ready {
 		return
 	}
 
 	now := time.Now()
+
+	// Compute animated cursor colors
+	cursorBgColor := lipgloss.Color(l.theme.Cursor)
+	cursorFgColor := lipgloss.Color(l.theme.Accent)
+	if l.cursorTween.Running() {
+		tval := l.cursorTween.Progress(now)
+		cursorBgColor = Interpolate[lipgloss.Color](
+			lipgloss.Color(l.theme.Muted),
+			lipgloss.Color(l.theme.Cursor),
+			tval, EaseOutCubic,
+		)
+		cursorFgColor = Interpolate[lipgloss.Color](
+			lipgloss.Color(l.theme.Muted),
+			lipgloss.Color(l.theme.Accent),
+			tval, EaseOutCubic,
+		)
+	}
+
 	cursorMarker := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(l.theme.Accent)).
+		Foreground(cursorFgColor).
 		Bold(true)
 	cursorBg := lipgloss.NewStyle().
-		Background(lipgloss.Color(l.theme.Cursor))
+		Background(cursorBgColor)
 	flashStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(l.theme.Flash)).
 		Bold(true)
