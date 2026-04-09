@@ -36,14 +36,16 @@ import (
 )
 
 func main() {
-	// Sub-commands handled before flag parsing so their own flags don't
-	// collide with the top-level flag set.
+	// Sub-commands handled before flag parsing so that subcommand flags
+	// don't collide with the top-level flag set.
 	if len(os.Args) >= 2 {
 		switch os.Args[1] {
 		case "record":
 			os.Exit(runRecord(os.Args[2:]))
 		case "replay":
 			os.Exit(runReplay(os.Args[2:]))
+		case "gen":
+			os.Exit(runGen(os.Args[2:]))
 		case "history":
 			fs := flag.NewFlagSet("history", flag.ExitOnError)
 			keep := fs.Int("keep", defaultKeep, "number of recent runs to display")
