@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
@@ -155,7 +157,7 @@ type Release struct {
 func FetchLatestRelease(baseURL, owner, repo string) (*Release, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/releases/latest", baseURL, owner, repo)
 	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(url)
+	resp, err := fetchWithBackoff(client, url, 3)
 	if err != nil {
 		return nil, fmt.Errorf("fetching release: %w", err)
 	}
@@ -445,6 +447,13 @@ func CheckForUpdate(cfg UpdateConfig) (*UpdateResult, error) {
 			result.ReleaseURL = cache.ReleaseURL
 			result.ReleaseNotes = cache.ReleaseNotes
 			result.Available = latest.NewerThan(current)
+			if minV, ok := ParseMinimumVersion(cache.ReleaseNotes); ok && minV.NewerThan(current) {
+				result.Required = true
+				result.Available = true
+			}
+			if !result.Required && result.Available && IsVersionSkipped(cfg, cache.LatestVersion) {
+				result.Available = false
+			}
 		}
 		return result, nil
 	}
@@ -473,6 +482,24 @@ func CheckForUpdate(cfg UpdateConfig) (*UpdateResult, error) {
 	result.ReleaseURL = rel.HTMLURL
 	result.ReleaseNotes = rel.Body
 	result.Available = latest.NewerThan(current)
+
+	// Minimum-version enforcement: if the release advertises a
+	// minimum_version marker newer than current, set Required=true so
+	// UpdateForced mode can gate app launch.
+	if minV, ok := ParseMinimumVersion(rel.Body); ok {
+		if minV.NewerThan(current) {
+			result.Required = true
+			result.Available = true
+		}
+	}
+
+	// Skip-version: if the user previously chose to skip this exact tag,
+	// suppress Available unless it is Required (min-version overrides).
+	if !result.Required && result.Available {
+		if IsVersionSkipped(cfg, rel.TagName) {
+			result.Available = false
+		}
+	}
 
 	return result, nil
 }
@@ -732,7 +759,67 @@ func replaceBinary(exePath string, newBinary []byte) error {
 		return fmt.Errorf("replacing binary: %w", err)
 	}
 
-	os.Remove(oldPath)
+	// NOTE: .old is intentionally kept so SelfUpdateRollback can restore it.
+	// Callers should call CleanupOldBinary after VerifyInstalled passes.
+	return nil
+}
+
+// SelfUpdateRollback restores the previous binary from <exePath>.old.
+// Returns an error if no .old file exists or the restore fails. Used
+// when a post-install verification step detects a broken new binary.
+func SelfUpdateRollback() error {
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("finding executable path: %w", err)
+	}
+	exePath, err = filepath.EvalSymlinks(exePath)
+	if err != nil {
+		return fmt.Errorf("resolving symlinks: %w", err)
+	}
+	oldPath := exePath + ".old"
+	if _, err := os.Stat(oldPath); err != nil {
+		return fmt.Errorf("no rollback target at %s: %w", oldPath, err)
+	}
+	// Move current (broken) binary aside, restore old.
+	brokenPath := exePath + ".broken"
+	_ = os.Remove(brokenPath)
+	if err := os.Rename(exePath, brokenPath); err != nil {
+		return fmt.Errorf("moving broken binary aside: %w", err)
+	}
+	if err := os.Rename(oldPath, exePath); err != nil {
+		// best-effort: try to restore the broken one so we don't leave nothing
+		_ = os.Rename(brokenPath, exePath)
+		return fmt.Errorf("restoring .old: %w", err)
+	}
+	_ = os.Remove(brokenPath)
+	return nil
+}
+
+// VerifyInstalled spawns the newly-installed binary with "--version" and
+// checks its output contains the expected tag. If it does not, the update
+// is rolled back via SelfUpdateRollback. Intended to run immediately after
+// SelfUpdate in modes that can recover from a bad install.
+func VerifyInstalled(expectedTag string) error {
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("finding executable path: %w", err)
+	}
+	exePath, err = filepath.EvalSymlinks(exePath)
+	if err != nil {
+		return fmt.Errorf("resolving symlinks: %w", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, exePath, "--version")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		_ = SelfUpdateRollback()
+		return fmt.Errorf("spawning %s --version: %w", exePath, err)
+	}
+	if expectedTag != "" && !strings.Contains(string(out), strings.TrimPrefix(expectedTag, "v")) {
+		_ = SelfUpdateRollback()
+		return fmt.Errorf("version verification failed: output %q did not contain %q", string(out), expectedTag)
+	}
 	return nil
 }
 
