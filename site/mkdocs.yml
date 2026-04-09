@@ -1,0 +1,71 @@
+site_name: tuikit-go
+site_description: The pragmatic TUI toolkit for shipping Go CLI tools fast
+site_url: https://moneycaringcoder.github.io/tuikit-go
+repo_url: https://github.com/moneycaringcoder/tuikit-go
+repo_name: moneycaringcoder/tuikit-go
+edit_uri: edit/main/site/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - guides/quickstart.md
+    - guides/app-structure.md
+    - guides/theming.md
+    - guides/testing.md
+  - Components:
+    - components/table.md
+    - components/listview.md
+    - components/logviewer.md
+    - components/statusbar.md
+    - components/tabs.md
+    - components/picker.md
+    - components/help.md
+  - Reference:
+    - guides/cli-primitives.md
+    - guides/self-update.md
+    - guides/layout.md
