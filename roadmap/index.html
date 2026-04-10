@@ -650,48 +650,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../components/logviewer/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    LogViewer
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../components/statusbar/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    StatusBar
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../components/tabs/" class="md-nav__link">
         
   
@@ -713,11 +671,158 @@
   
   
     <li class="md-nav__item">
+      <a href="../components/form/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Form
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../components/tree/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tree
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../components/picker/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
     Picker
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../components/filepicker/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    FilePicker
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../components/split/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Split
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../components/logviewer/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    LogViewer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../components/charts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Charts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../components/statusbar/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    StatusBar
   </span>
   
 
@@ -1090,15 +1195,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#v012-in-progress" class="md-nav__link">
-    <span class="md-ellipsis">
-      v0.12 (In Progress)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#planned" class="md-nav__link">
     <span class="md-ellipsis">
       Planned
@@ -1189,15 +1285,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#v012-in-progress" class="md-nav__link">
-    <span class="md-ellipsis">
-      v0.12 (In Progress)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#planned" class="md-nav__link">
     <span class="md-ellipsis">
       Planned
@@ -1243,21 +1330,8 @@
 
 
 <h1 id="roadmap">Roadmap<a class="headerlink" href="#roadmap" title="Permanent link">&para;</a></h1>
-<h2 id="v012-in-progress">v0.12 (In Progress)<a class="headerlink" href="#v012-in-progress" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>SSH serving</strong> — serve tuikit-go apps over SSH via Wish integration</li>
-<li><strong>Cosign signature verification</strong> — verify release binary signatures</li>
-<li><strong>Delta updates</strong> — binary patch-based self-update for smaller downloads</li>
-<li><strong>Docs site</strong> — this MkDocs Material site with component gallery</li>
-<li><strong>Starter template</strong> — <code>go install</code> scaffold for new projects</li>
-<li><strong>Go Report Card A+</strong> — lint and vet clean pass</li>
-</ul>
 <h2 id="planned">Planned<a class="headerlink" href="#planned" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Tree component</strong> — collapsible tree view for hierarchical data</li>
-<li><strong>Form component</strong> — multi-field validated form with keyboard navigation</li>
-<li><strong>Split pane</strong> — arbitrary n-way splits beyond DualPane</li>
-<li><strong>Markdown renderer</strong> — render Markdown in a scrollable viewport</li>
 <li><strong>WASM target</strong> — compile TUI apps for browser via <code>wasip1</code></li>
 <li><strong>More theme presets</strong> — Solarized, Everforest, Nightfox</li>
 </ul>
@@ -1271,28 +1345,48 @@
 </thead>
 <tbody>
 <tr>
+<td>v0.12.0</td>
+<td>SSH serve via Wish, cosign signature verification, delta updates, docs site, starter template</td>
+</tr>
+<tr>
+<td>v0.11.0</td>
+<td>tuitest snapshot review UI, VHS tape integration, screen diff viewer</td>
+</tr>
+<tr>
+<td>v0.10.0</td>
+<td>Context struct, dev console overlay, theme hot-reload</td>
+</tr>
+<tr>
+<td>v0.9.0</td>
+<td>Tree, FilePicker, LogViewer, virtualized Table, HBox/VBox, Breadcrumbs, Split pane</td>
+</tr>
+<tr>
+<td>v0.8.0</td>
+<td>Theme system, animation engine, Form, Tabs, Picker, Toast, gradient text</td>
+</tr>
+<tr>
 <td>v0.7.0</td>
-<td>Table detail bars, RowStyler, ListView cursor tween, tuitest, CLI primitives</td>
+<td>Markdown rendering, collapsible sections, detail overlay</td>
 </tr>
 <tr>
 <td>v0.6.0</td>
-<td>tuitest framework, golden files, vitest reporter</td>
+<td>Self-update with SHA256, rollback, rate-limit backoff</td>
 </tr>
 <tr>
 <td>v0.5.0</td>
-<td>CLI primitives package</td>
+<td>CLI primitives, styled messages, ConfigEditor, CommandBar</td>
 </tr>
 <tr>
 <td>v0.4.0</td>
-<td>Tabs, Picker, Toast system</td>
+<td>Poller, mouse support</td>
 </tr>
 <tr>
 <td>v0.3.0</td>
-<td>LogViewer, ConfigEditor, CommandBar</td>
+<td>Dual-pane layout, overlay system</td>
 </tr>
 <tr>
 <td>v0.2.0</td>
-<td>Table virtual mode, theme presets</td>
+<td>StatusBar, Help overlay, keybinding registry</td>
 </tr>
 <tr>
 <td>v0.1.0</td>

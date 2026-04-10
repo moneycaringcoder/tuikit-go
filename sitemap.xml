@@ -2,122 +2,147 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/api-reference/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/changelog/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/cookbook/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/install/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/roadmap/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/showcase/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/themes/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://moneycaringcoder.github.io/tuikit-go/components/charts/</loc>
+         <lastmod>2026-04-10</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://moneycaringcoder.github.io/tuikit-go/components/filepicker/</loc>
+         <lastmod>2026-04-10</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://moneycaringcoder.github.io/tuikit-go/components/form/</loc>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/components/help/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/components/listview/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/components/logviewer/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/components/picker/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/components/progress/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://moneycaringcoder.github.io/tuikit-go/components/split/</loc>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/components/statusbar/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/components/table/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/components/tabs/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/components/toasts/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://moneycaringcoder.github.io/tuikit-go/components/tree/</loc>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/guides/app-structure/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/guides/cli-primitives/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/guides/layout/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/guides/quickstart/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/guides/self-update/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/guides/testing/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://moneycaringcoder.github.io/tuikit-go/guides/theming/</loc>
-         <lastmod>2026-04-09</lastmod>
+         <lastmod>2026-04-10</lastmod>
          <changefreq>daily</changefreq>
     </url>
 </urlset>
