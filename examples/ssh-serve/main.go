@@ -202,6 +202,7 @@ func main() {
 		Addr:    ":2222",
 		Factory: buildApp,
 	}); err != nil && err != context.Canceled {
+		cancel()
 		fmt.Fprintf(os.Stderr, "serve error: %v\n", err)
 		os.Exit(1)
 	}

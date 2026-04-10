@@ -77,7 +77,7 @@ func fetchWithBackoff(client *http.Client, url string, maxAttempts int) (*http.R
 		// Rate-limited (GitHub uses 403 with X-RateLimit-Remaining: 0).
 		if resp.StatusCode == http.StatusForbidden && resp.Header.Get("X-RateLimit-Remaining") == "0" {
 			reset := parseRateLimitReset(resp.Header)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			lastErr = &RateLimitError{StatusCode: resp.StatusCode, ResetAt: reset}
 			wait := backoffDuration(attempt)
 			if !reset.IsZero() {
@@ -90,7 +90,7 @@ func fetchWithBackoff(client *http.Client, url string, maxAttempts int) (*http.R
 			continue
 		}
 		if resp.StatusCode >= 500 && resp.StatusCode < 600 {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			lastErr = fmt.Errorf("server error: %d", resp.StatusCode)
 			time.Sleep(backoffDuration(attempt))
 			continue
