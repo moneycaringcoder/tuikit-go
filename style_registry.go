@@ -42,17 +42,6 @@ func (r *styleRegistry) get(name string) (StyleSet, bool) {
 	return s, ok
 }
 
-// clone returns a deep copy of the registry (used when copying a Theme).
-func (r *styleRegistry) clone() *styleRegistry {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	c := newStyleRegistry()
-	for k, v := range r.styles {
-		c.styles[k] = v
-	}
-	return c
-}
-
 // --- Theme integration ---
 
 // Style returns the StyleSet registered under name. If no override has been

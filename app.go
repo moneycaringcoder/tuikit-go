@@ -603,10 +603,8 @@ func (a *appModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			// Adjust X coordinate relative to the target pane
 			if target == 0 {
 				msg.X -= mainStart
-			} else {
-				if a.dualPane.SideRight {
-					msg.X -= mainEnd + 3 // skip past main + separator
-				}
+			} else if a.dualPane.SideRight {
+				msg.X -= mainEnd + 3 // skip past main + separator
 			}
 		}
 	}
@@ -1138,7 +1136,7 @@ func (a *App) runUpdateCheck() {
 		}
 		fmt.Print("Update now? [y/n]: ")
 		var answer string
-		fmt.Scanln(&answer)
+		_, _ = fmt.Scanln(&answer)
 		if strings.ToLower(strings.TrimSpace(answer)) == "y" {
 			if err := SelfUpdate(*cfg); err != nil {
 				fmt.Fprintf(os.Stderr, "Update failed: %v\n", err)

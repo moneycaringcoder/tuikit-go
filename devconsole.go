@@ -18,12 +18,6 @@ func DevConsoleToggleCmd() tea.Cmd {
 	return func() tea.Msg { return devConsoleToggleMsg{} }
 }
 
-// devConsoleFrameMsg records a frame timestamp for FPS calculation.
-type devConsoleFrameMsg struct{ t time.Time }
-
-// keyRecord holds a recent keypress string.
-type keyRecord struct{ key string }
-
 // devConsole is the overlay that renders the developer console.
 // It is toggled by ctrl+\ or by setting TUIKIT_DEVCONSOLE=1.
 //

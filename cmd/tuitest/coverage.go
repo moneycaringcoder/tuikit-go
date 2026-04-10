@@ -234,7 +234,6 @@ func printCoveragePanel(profilePath string) error {
 
 	fmt.Println("  Least covered files:")
 	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
-	pctStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
 	for i := 0; i < n; i++ {
 		fc := sorted[i]
 		name := shortName(fc.Name)
@@ -245,7 +244,7 @@ func printCoveragePanel(profilePath string) error {
 		} else if pct >= 50 {
 			color = lipgloss.Color("226")
 		}
-		pctStyle = lipgloss.NewStyle().Foreground(color)
+		pctStyle := lipgloss.NewStyle().Foreground(color)
 		fmt.Printf("  %s %s\n",
 			labelStyle.Render(fmt.Sprintf("%-50s", name)),
 			pctStyle.Render(fmt.Sprintf("%5.1f%%", pct)),

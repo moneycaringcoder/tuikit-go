@@ -341,16 +341,17 @@ func (l *ListView[T]) rebuildContent() {
 		isCursor := l.focused && i == l.cursor
 		line := l.opts.RenderItem(item, i, isCursor, l.theme)
 
-		if isCursor {
+		switch {
+		case isCursor:
 			line = cursorMarker.Render(glyphs.CursorMarker) + " " + cursorBg.Render(line)
 			// Pad to full width with cursor background
 			vis := lipgloss.Width(line)
 			if vis < l.width {
 				line += cursorBg.Render(strings.Repeat(" ", l.width-vis))
 			}
-		} else if l.opts.FlashFunc != nil && l.opts.FlashFunc(item, now) {
+		case l.opts.FlashFunc != nil && l.opts.FlashFunc(item, now):
 			line = flashStyle.Render(glyphs.FlashMarker) + " " + line
-		} else {
+		default:
 			line = "  " + line
 		}
 		lines = append(lines, line)

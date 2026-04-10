@@ -808,7 +808,7 @@ func replaceBinary(exePath string, newBinary []byte) error {
 	}
 
 	if err := os.Rename(newPath, exePath); err != nil {
-		os.Rename(oldPath, exePath)
+		_ = os.Rename(oldPath, exePath) // best-effort rollback
 		return fmt.Errorf("replacing binary: %w", err)
 	}
 

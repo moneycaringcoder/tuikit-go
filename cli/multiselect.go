@@ -33,8 +33,7 @@ func newMultiSelectModel(prompt string, items []string) multiSelectModel {
 func (m multiSelectModel) Init() tea.Cmd { return nil }
 
 func (m multiSelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch msg.String() {
 		case "ctrl+c", "esc":
 			m.quitting = true

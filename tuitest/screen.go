@@ -39,7 +39,7 @@ func (s *Screen) Render(output string) {
 	// Normalize line endings: replace bare \n with \r\n (but don't double up \r\n).
 	normalized := strings.ReplaceAll(output, "\r\n", "\n")
 	normalized = strings.ReplaceAll(normalized, "\n", "\r\n")
-	s.stream.Feed([]byte(normalized))
+	_ = s.stream.Feed([]byte(normalized))
 }
 
 // TextAt returns the text content at the given row, from startCol to endCol.

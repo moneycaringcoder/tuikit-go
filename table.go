@@ -598,10 +598,8 @@ func (t *Table) renderRow(row Row, idx int, cols []Column, origIdxs []int, width
 		var cellContent string
 		if t.opts.CellRenderer != nil {
 			cellContent = t.opts.CellRenderer(row, origIdx, isCursor, t.theme)
-		} else {
-			if origIdx < len(row) {
-				cellContent = row[origIdx]
-			}
+		} else if origIdx < len(row) {
+			cellContent = row[origIdx]
 		}
 
 		// Exempt columns marked NoRowStyle from row-level background
@@ -688,11 +686,6 @@ func (t *Table) alignCellStyled(content string, width int, align Alignment, rs *
 	default:
 		return content + pad
 	}
-}
-
-func (t *Table) visibleColumns() []Column {
-	cols, _ := t.visibleColumnsWithIndices()
-	return cols
 }
 
 // visibleColumnsWithIndices returns the subset of columns that fit in the

@@ -117,8 +117,7 @@ func (p *Picker) Init() tea.Cmd {
 func (p *Picker) Update(msg tea.Msg, ctx Context) (Component, tea.Cmd) {
 	var cmds []tea.Cmd
 
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	if msg, ok := msg.(tea.KeyMsg); ok {
 		cmd := p.handleKey(msg)
 		if cmd != nil {
 			cmds = append(cmds, cmd)

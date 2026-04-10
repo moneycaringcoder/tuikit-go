@@ -140,7 +140,7 @@ func (f *fieldBase) renderLabel(focused bool, theme Theme) string {
 	label := f.label
 	if f.required {
 		req := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Negative)).Render("*")
-		label = label + req
+		label += req
 	}
 	return style.Render(label)
 }
@@ -808,7 +808,7 @@ func (f *Form) Update(msg tea.Msg, ctx Context) (Component, tea.Cmd) {
 			if f.opts.WizardMode {
 				if f.wizardStep < f.totalFields()-1 {
 					if cur := f.allFields[f.wizardStep]; cur != nil {
-						cur.Validate()
+						_ = cur.Validate()
 					}
 					f.wizardStep++
 					f.moveFocusTo(f.wizardStep)
@@ -837,7 +837,7 @@ func (f *Form) Update(msg tea.Msg, ctx Context) (Component, tea.Cmd) {
 			if f.opts.WizardMode {
 				if f.wizardStep < f.totalFields()-1 {
 					if cur := f.allFields[f.wizardStep]; cur != nil {
-						cur.Validate()
+						_ = cur.Validate()
 					}
 					f.wizardStep++
 					f.moveFocusTo(f.wizardStep)

@@ -65,8 +65,7 @@ func (c *ConfigEditor) SetTheme(t Theme) { c.theme = t }
 func (c *ConfigEditor) Init() tea.Cmd { return nil }
 
 func (c *ConfigEditor) Update(msg tea.Msg, ctx Context) (Component, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	if msg, ok := msg.(tea.KeyMsg); ok {
 		return c.handleKey(msg)
 	}
 	return c, nil

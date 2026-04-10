@@ -143,8 +143,7 @@ func (fp *FilePicker) Update(msg tea.Msg, ctx Context) (Component, tea.Cmd) {
 }
 
 func (fp *FilePicker) handleKey(msg tea.KeyMsg) tea.Cmd {
-	switch msg.String() {
-	case "/":
+	if msg.String() == "/" {
 		fp.searchActive = true
 		fp.input.Reset()
 		fp.input.Focus()

@@ -564,7 +564,7 @@ func alignCrossHBox(content string, w, totalH int, align FlexAlign) string {
 			for i := range botLines {
 				botLines[i] = empty
 			}
-			padded = append(topLines, append(padded, botLines...)...)
+			padded = append(topLines, append(padded, botLines...)...) //nolint:gocritic // intentional multi-append for vertical padding
 		}
 	case FlexAlignEnd:
 		pad := totalH - len(padded)

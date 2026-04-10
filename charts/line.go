@@ -136,14 +136,15 @@ func (l *Line) View() string {
 			}
 			np := pts[i+1]
 
-			if p.row == np.row {
+			switch {
+			case p.row == np.row:
 				// Horizontal segment
 				for c := p.col + 1; c < np.col; c++ {
 					if grid[p.row][c].ch == ' ' {
 						grid[p.row][c] = cell{'─', color}
 					}
 				}
-			} else if l.Smooth {
+			case l.Smooth:
 				// Diagonal segments
 				dr := np.row - p.row
 				dc := np.col - p.col
@@ -168,7 +169,7 @@ func (l *Line) View() string {
 						grid[row][col] = cell{ch, color}
 					}
 				}
-			} else {
+			default:
 				// Vertical step at midpoint then horizontal
 				midCol := (p.col + np.col) / 2
 				// Horizontal to midCol

@@ -32,8 +32,7 @@ func (h *Help) SetTheme(t Theme) { h.theme = t }
 func (h *Help) Init() tea.Cmd { return nil }
 
 func (h *Help) Update(msg tea.Msg, ctx Context) (Component, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch msg.String() {
 		case "esc", "?", "q":
 			h.Close()

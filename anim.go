@@ -21,7 +21,7 @@ func Linear(t float64) float64 { return t }
 func EaseInOut(t float64) float64 { return t * t * (3 - 2*t) }
 
 // EaseOutCubic - fast start, slow end.
-func EaseOutCubic(t float64) float64 { t = t - 1; return 1 + t*t*t }
+func EaseOutCubic(t float64) float64 { t--; return 1 + t*t*t }
 
 // EaseInCubic - slow start, fast end.
 func EaseInCubic(t float64) float64 { return t * t * t }

@@ -61,8 +61,7 @@ func (dv *DiffViewer) Init() tea.Cmd { return nil }
 // ignores the ctx value (kept as interface{} to avoid importing tuikit from
 // inside the tuitest sub-package, which would create a cycle).
 func (dv *DiffViewer) Update(msg tea.Msg, _ interface{}) (*DiffViewer, tea.Cmd) {
-	switch m := msg.(type) {
-	case tea.KeyMsg:
+	if m, ok := msg.(tea.KeyMsg); ok {
 		switch m.String() {
 		case "s":
 			dv.mode = DiffModeSideBySide
