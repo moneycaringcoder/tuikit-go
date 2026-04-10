@@ -112,8 +112,8 @@ func buildApp() *tuikit.App {
 		}
 		val := row[colIdx]
 		var style lipgloss.Style
-		switch {
-		case colIdx == 2:
+		switch colIdx {
+		case 2:
 			switch val {
 			case "Delivered":
 				style = lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Positive))
@@ -124,7 +124,7 @@ func buildApp() *tuikit.App {
 			default:
 				style = lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Accent))
 			}
-		case colIdx == 4:
+		case 4:
 			style = lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Positive))
 			val = "$" + val
 		default:
@@ -193,6 +193,10 @@ func buildApp() *tuikit.App {
 }
 
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
@@ -203,6 +207,7 @@ func main() {
 		Factory: buildApp,
 	}); err != nil && err != context.Canceled {
 		fmt.Fprintf(os.Stderr, "serve error: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }

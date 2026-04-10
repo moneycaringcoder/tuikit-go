@@ -110,8 +110,8 @@ func main() {
 		}
 		val := row[colIdx]
 		var style lipgloss.Style
-		switch {
-		case colIdx == 2: // Status — semantic colors
+		switch colIdx {
+		case 2: // Status — semantic colors
 			switch val {
 			case "Delivered":
 				style = lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Positive))
@@ -122,7 +122,7 @@ func main() {
 			default:
 				style = lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Accent))
 			}
-		case colIdx == 4: // Tip — always green, prefixed $
+		case 4: // Tip — always green, prefixed $
 			style = lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Positive))
 			val = "$" + val
 		default:

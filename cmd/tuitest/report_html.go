@@ -115,13 +115,13 @@ func cmdReport(outPath string) int {
 			status = "fail"
 			badgeClass = "badge-fail"
 		}
-		rows.WriteString(fmt.Sprintf(
+		fmt.Fprintf(&rows,
 			"<tr><td>%s</td><td><span class=\"badge %s\">%s</span></td><td>%d</td><td>%d</td><td>%d</td><td>%.2fs</td></tr>\n",
 			html.EscapeString(r.RunAt.Format("2006-01-02 15:04:05")),
 			badgeClass, status,
 			r.Passed, r.Failed, r.Total,
 			r.Duration,
-		))
+		)
 	}
 
 	content := fmt.Sprintf(reportHTMLTemplate,

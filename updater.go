@@ -162,7 +162,7 @@ func FetchLatestRelease(baseURL, owner, repo string) (*Release, error) {
 	if err != nil {
 		return nil, fmt.Errorf("fetching release: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
@@ -543,7 +543,7 @@ func extractFromTarGz(data []byte, binaryName string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("opening gzip: %w", err)
 	}
-	defer gr.Close()
+	defer func() { _ = gr.Close() }()
 
 	tr := tar.NewReader(gr)
 	for {
@@ -574,7 +574,7 @@ func extractFromZip(data []byte, binaryName string) ([]byte, error) {
 			if err != nil {
 				return nil, fmt.Errorf("opening %s: %w", f.Name, err)
 			}
-			defer rc.Close()
+			defer func() { _ = rc.Close() }()
 			return io.ReadAll(rc)
 		}
 	}
@@ -754,7 +754,7 @@ func downloadURLWithProgress(client *http.Client, url string, onProgress Progres
 	if err != nil {
 		return nil, fmt.Errorf("GET %s: %w", url, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
@@ -803,7 +803,7 @@ func replaceBinary(exePath string, newBinary []byte) error {
 	}
 
 	if err := os.Rename(exePath, oldPath); err != nil {
-		os.Remove(newPath)
+		_ = os.Remove(newPath)
 		return fmt.Errorf("backing up current binary: %w", err)
 	}
 
@@ -887,5 +887,5 @@ func CleanupOldBinary() {
 	if err != nil {
 		return
 	}
-	os.Remove(exe + ".old")
+	_ = os.Remove(exe + ".old")
 }
