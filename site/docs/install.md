@@ -6,7 +6,7 @@
 go get github.com/moneycaringcoder/tuikit-go
 ```
 
-Requires Go 1.21+. No CGO required (`CGO_ENABLED=0` is safe).
+Requires Go 1.24+. No CGO required (`CGO_ENABLED=0` is safe).
 
 ## tuitest CLI
 

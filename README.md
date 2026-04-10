@@ -7,8 +7,6 @@
 
 The pragmatic TUI toolkit for shipping CLI tools fast. Wraps [Bubble Tea](https://github.com/charmbracelet/bubbletea) + [Lip Gloss](https://github.com/charmbracelet/lipgloss) with reusable components, a layout engine, a keybinding registry, a theme system, and built-in binary self-update.
 
-![tuikit-go quick start](https://raw.githubusercontent.com/moneycaringcoder/tuikit-go/main/docs/gifs/quickstart.gif)
-
 ## Features
 
 - **Table** with sorting, filtering, custom cell rendering, mouse support, and virtualized scrolling (1M+ rows)
@@ -85,7 +83,7 @@ More examples in [`examples/`](examples/).
 ## Documentation
 
 - **[Docs site](https://moneycaringcoder.github.io/tuikit-go/)** — guides, component reference, theming, self-update setup
-- **[Examples](examples/)** — 16 runnable demos from minimal to full dashboard
+- **[Examples](examples/)** — 15 runnable demos from minimal to full dashboard
 - **[pkg.go.dev](https://pkg.go.dev/github.com/moneycaringcoder/tuikit-go)** — API reference
 
 ## Repository Layout

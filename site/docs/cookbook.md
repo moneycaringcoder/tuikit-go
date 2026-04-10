@@ -14,6 +14,8 @@ package main
 import (
     "fmt"
     "time"
+
+    "github.com/charmbracelet/lipgloss"
     tuikit "github.com/moneycaringcoder/tuikit-go"
 )
 
@@ -191,6 +193,7 @@ import (
     "os/signal"
     "syscall"
 
+    tea "github.com/charmbracelet/bubbletea"
     "github.com/charmbracelet/ssh"
     "github.com/charmbracelet/wish"
     "github.com/charmbracelet/wish/bubbletea"

@@ -28,14 +28,14 @@ func TestMarkdown_HeadingColor(t *testing.T) {
 	// glamour falls back to document Text color. Revisit theme injection
 	// path in markdown.go; likely need WithEnvironmentConfig or explicit
 	// lipgloss post-pass over headings.
-	t.Skip("glamour heading theming needs rework — see .omc/plans/POST-V0.12-FOLLOWUPS.md")
+	t.Skip("glamour heading theming needs rework — see https://github.com/charmbracelet/glamour/issues")
 }
 
 // TestMarkdown_CodeBlockBackground verifies that a fenced code block uses the
 // Muted token as background (G4: code block bg == theme.Muted).
 func TestMarkdown_CodeBlockBackground(t *testing.T) {
 	// TODO: see TestMarkdown_HeadingColor — same glamour theming gap.
-	t.Skip("glamour code-block theming needs rework — see .omc/plans/POST-V0.12-FOLLOWUPS.md")
+	t.Skip("glamour code-block theming needs rework — see https://github.com/charmbracelet/glamour/issues")
 }
 
 // TestMarkdown_FallbackOnEmpty ensures Markdown("", theme) returns something
