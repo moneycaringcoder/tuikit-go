@@ -214,7 +214,7 @@ func parseColorDict(dec *xml.Decoder) (iterm2Color, error) {
 				key = s
 			} else {
 				var v float64
-				fmt.Sscanf(s, "%f", &v)
+				_, _ = fmt.Sscanf(s, "%f", &v)
 				switch key {
 				case "Red Component":
 					c.r = v

@@ -64,11 +64,8 @@ func TestAppKeyDispatch_Step2_InputCaptureBlocksGlobals(t *testing.T) {
 
 	// "q" would normally quit, but capture mode should route it to the component
 	_, cmd := a.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
-	if cmd != nil {
-		// Any cmd is acceptable except tea.Quit. Using reflect-like nil check:
-		// cmd should not be tea.Quit, which is a non-nil tea.Cmd function.
-		// We accept anything; but verify the component saw the key.
-	}
+	// Any cmd is acceptable except tea.Quit — verify the component saw the key.
+	_ = cmd
 	if ic.lastKey != "q" {
 		t.Errorf("capture component should have received 'q', got %q", ic.lastKey)
 	}

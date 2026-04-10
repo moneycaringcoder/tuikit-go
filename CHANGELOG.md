@@ -5,9 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-Full release history is also available on
-[GitHub Releases](https://github.com/moneycaringcoder/tuikit-go/releases).
-
 ## [0.12.0] - 2026-04-09
 
 ### Added

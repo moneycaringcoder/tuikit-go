@@ -1,8 +1,11 @@
 # tuikit-go
 
-The pragmatic TUI toolkit for shipping CLI tools fast. Wraps [Bubble Tea](https://github.com/charmbracelet/bubbletea) + [Lip Gloss](https://github.com/charmbracelet/lipgloss) with reusable components, a layout engine, a keybinding registry, a theme system, and built-in binary self-update.
+[![CI](https://github.com/moneycaringcoder/tuikit-go/actions/workflows/ci.yml/badge.svg)](https://github.com/moneycaringcoder/tuikit-go/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/moneycaringcoder/tuikit-go.svg)](https://pkg.go.dev/github.com/moneycaringcoder/tuikit-go)
+[![Go Report Card](https://goreportcard.com/badge/github.com/moneycaringcoder/tuikit-go)](https://goreportcard.com/report/github.com/moneycaringcoder/tuikit-go)
+[![Latest Release](https://img.shields.io/github/v/release/moneycaringcoder/tuikit-go)](https://github.com/moneycaringcoder/tuikit-go/releases/latest)
 
-![tuikit-go quick start](https://raw.githubusercontent.com/moneycaringcoder/tuikit-go/main/docs/gifs/quickstart.gif)
+The pragmatic TUI toolkit for shipping CLI tools fast. Wraps [Bubble Tea](https://github.com/charmbracelet/bubbletea) + [Lip Gloss](https://github.com/charmbracelet/lipgloss) with reusable components, a layout engine, a keybinding registry, a theme system, and built-in binary self-update.
 
 ## Features
 
@@ -80,7 +83,7 @@ More examples in [`examples/`](examples/).
 ## Documentation
 
 - **[Docs site](https://moneycaringcoder.github.io/tuikit-go/)** — guides, component reference, theming, self-update setup
-- **[Examples](examples/)** — 16 runnable demos from minimal to full dashboard
+- **[Examples](examples/)** — 15 runnable demos from minimal to full dashboard
 - **[pkg.go.dev](https://pkg.go.dev/github.com/moneycaringcoder/tuikit-go)** — API reference
 
 ## Repository Layout
@@ -104,6 +107,10 @@ More examples in [`examples/`](examples/).
 
 - [gitstream-tui](https://github.com/moneycaringcoder/gitstream-tui) — GitHub activity dashboard
 - [cryptstream-tui](https://github.com/moneycaringcoder/cryptstream-tui) — Live cryptocurrency ticker
+
+## Compatibility
+
+tuikit-go follows [semantic versioning](https://semver.org/). Within a major version, the public API is stable — no breaking changes in minor or patch releases. Pre-v1.0 releases (v0.x) may include breaking changes in minor versions, documented in the [changelog](CHANGELOG.md).
 
 ## Contributing
 

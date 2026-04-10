@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	passwordMaskStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 	passwordDoneStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Bold(true)
 )
 
@@ -42,8 +41,7 @@ func (m passwordModel) Init() tea.Cmd {
 }
 
 func (m passwordModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch msg.String() {
 		case "ctrl+c":
 			m.quitting = true

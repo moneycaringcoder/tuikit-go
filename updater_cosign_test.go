@@ -29,7 +29,9 @@ func generateTestKeyPair(t *testing.T) (ed25519.PublicKey, ed25519.PrivateKey) {
 // pubKeyToPEM encodes an ed25519 public key as a minimal SubjectPublicKeyInfo PEM block.
 func pubKeyToPEM(pub ed25519.PublicKey) string {
 	spkiHeader := []byte{0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00}
-	body := append(spkiHeader, pub...)
+	body := make([]byte, 0, len(spkiHeader)+len(pub))
+	body = append(body, spkiHeader...)
+	body = append(body, pub...)
 	block := &pem.Block{Type: "PUBLIC KEY", Bytes: body}
 	return string(pem.EncodeToMemory(block))
 }
@@ -225,12 +227,10 @@ func TestSelfUpdateCosignVerification(t *testing.T) {
 				if !strings.Contains(err.Error(), "cosign") {
 					t.Errorf("error %q does not mention cosign", err.Error())
 				}
-			} else {
+			} else if err != nil && strings.Contains(err.Error(), "cosign") {
 				// Valid sig: SelfUpdate may still fail at replaceBinary (test env),
 				// but must not fail at the cosign step.
-				if err != nil && strings.Contains(err.Error(), "cosign") {
-					t.Errorf("unexpected cosign error: %v", err)
-				}
+				t.Errorf("unexpected cosign error: %v", err)
 			}
 		})
 	}

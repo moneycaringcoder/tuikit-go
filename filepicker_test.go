@@ -134,7 +134,7 @@ func TestFilePicker_Select(t *testing.T) {
 	updated, _ := fp.Update(tea.KeyMsg{Type: tea.KeyDown}, tuikit.Context{})
 	fp = updated.(*tuikit.FilePicker)
 	updated, _ = fp.Update(tea.KeyMsg{Type: tea.KeyEnter}, tuikit.Context{})
-	fp = updated.(*tuikit.FilePicker)
+	_ = updated.(*tuikit.FilePicker)
 
 	// We may or may not land on a file (depends on sorting), but no panic.
 	_ = selected

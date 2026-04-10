@@ -26,17 +26,6 @@ import (
 // Messages
 // ----------------------------------------------------------------------------
 
-type reviewLoadedMsg struct {
-	items []tuitest.PendingGolden
-}
-
-type reviewActionMsg struct {
-	accepted bool // true=accept, false=reject
-	idx      int
-}
-
-type reviewErrMsg struct{ err error }
-
 // ----------------------------------------------------------------------------
 // Model
 // ----------------------------------------------------------------------------

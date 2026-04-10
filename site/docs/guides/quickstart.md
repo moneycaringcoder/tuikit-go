@@ -6,7 +6,7 @@
 go get github.com/moneycaringcoder/tuikit-go
 ```
 
-Requires Go 1.21+.
+Requires Go 1.24+.
 
 ## Minimal App
 

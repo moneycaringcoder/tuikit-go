@@ -284,6 +284,11 @@ func (t *Table) VisibleRowCount() int {
 
 func (t *Table) Init() tea.Cmd { return nil }
 
+// CapturesInput implements InputCapture. Returns true when the table is
+// in filtering mode so that global keybindings (like q-to-quit) are
+// bypassed and keystrokes are routed directly to the filter input.
+func (t *Table) CapturesInput() bool { return t.filtering }
+
 func (t *Table) Update(msg tea.Msg, ctx Context) (Component, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -593,10 +598,8 @@ func (t *Table) renderRow(row Row, idx int, cols []Column, origIdxs []int, width
 		var cellContent string
 		if t.opts.CellRenderer != nil {
 			cellContent = t.opts.CellRenderer(row, origIdx, isCursor, t.theme)
-		} else {
-			if origIdx < len(row) {
-				cellContent = row[origIdx]
-			}
+		} else if origIdx < len(row) {
+			cellContent = row[origIdx]
 		}
 
 		// Exempt columns marked NoRowStyle from row-level background
@@ -683,11 +686,6 @@ func (t *Table) alignCellStyled(content string, width int, align Alignment, rs *
 	default:
 		return content + pad
 	}
-}
-
-func (t *Table) visibleColumns() []Column {
-	cols, _ := t.visibleColumnsWithIndices()
-	return cols
 }
 
 // visibleColumnsWithIndices returns the subset of columns that fit in the

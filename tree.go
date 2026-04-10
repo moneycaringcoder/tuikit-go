@@ -96,10 +96,8 @@ func (t *Tree) Update(msg tea.Msg, ctx Context) (Component, tea.Cmd) {
 	if !t.focused {
 		return t, nil
 	}
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		cmd := t.handleKey(msg)
-		return t, cmd
+	if msg, ok := msg.(tea.KeyMsg); ok {
+		return t, t.handleKey(msg)
 	}
 	return t, nil
 }
@@ -196,11 +194,12 @@ func (t *Tree) View() string {
 
 		// Build connector glyph.
 		var connector string
-		if fn.depth == 0 {
+		switch {
+		case fn.depth == 0:
 			connector = ""
-		} else if fn.isLast {
+		case fn.isLast:
 			connector = fn.prefix + g.TreeLast + " "
-		} else {
+		default:
 			connector = fn.prefix + g.TreeBranch + " "
 		}
 
@@ -218,7 +217,7 @@ func (t *Tree) View() string {
 
 		glyph := node.Glyph
 		if glyph != "" {
-			glyph = glyph + " "
+			glyph += " "
 		}
 
 		var line string

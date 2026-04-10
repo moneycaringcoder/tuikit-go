@@ -60,7 +60,7 @@ func OpenURL(url string) {
 	if err := cmd.Start(); err != nil {
 		return
 	}
-	go cmd.Wait()
+	go func() { _ = cmd.Wait() }()
 }
 
 // SparklineOpts configures sparkline rendering.
@@ -135,15 +135,14 @@ func Sparkline(data []float64, maxWidth int, opts *SparklineOpts) (string, int) 
 		}
 		ch := string(blocks[idx])
 
-		if mono {
+		switch {
+		case mono, i == 0, v == data[i-1]:
 			sb.WriteString(neutralStyle.Render(ch))
-		} else if i == 0 {
-			sb.WriteString(neutralStyle.Render(ch))
-		} else if v > data[i-1] {
+		case v > data[i-1]:
 			sb.WriteString(upStyle.Render(ch))
-		} else if v < data[i-1] {
+		case v < data[i-1]:
 			sb.WriteString(downStyle.Render(ch))
-		} else {
+		default:
 			sb.WriteString(neutralStyle.Render(ch))
 		}
 	}

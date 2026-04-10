@@ -3,6 +3,7 @@ package tuikit
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -142,8 +143,7 @@ func (fp *FilePicker) Update(msg tea.Msg, ctx Context) (Component, tea.Cmd) {
 }
 
 func (fp *FilePicker) handleKey(msg tea.KeyMsg) tea.Cmd {
-	switch msg.String() {
-	case "/":
+	if msg.String() == "/" {
 		fp.searchActive = true
 		fp.input.Reset()
 		fp.input.Focus()
@@ -267,7 +267,7 @@ func (fp *FilePicker) renderSearch(width int) string {
 		itemLines = []string{mutedStyle.Render("  No results")}
 	}
 
-	count := mutedStyle.Render(" " + pickerItoa(len(fp.searchResults)) + " results")
+	count := mutedStyle.Render(" " + strconv.Itoa(len(fp.searchResults)) + " results")
 	return lipgloss.JoinVertical(lipgloss.Left, inputView, strings.Join(itemLines, "\n"), count)
 }
 

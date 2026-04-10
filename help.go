@@ -11,7 +11,7 @@ import (
 // Help is an overlay that auto-generates a keybinding reference from the registry.
 // It requires zero configuration — just call NewHelp() and register it with the App.
 type Help struct {
-	reg     *registry
+	reg     *Registry
 	theme   Theme
 	active  bool
 	focused bool
@@ -24,7 +24,7 @@ func NewHelp() *Help {
 	return &Help{}
 }
 
-func (h *Help) setRegistry(r *registry) { h.reg = r }
+func (h *Help) setRegistry(r *Registry) { h.reg = r }
 
 // SetTheme implements the Themed interface.
 func (h *Help) SetTheme(t Theme) { h.theme = t }
@@ -32,8 +32,7 @@ func (h *Help) SetTheme(t Theme) { h.theme = t }
 func (h *Help) Init() tea.Cmd { return nil }
 
 func (h *Help) Update(msg tea.Msg, ctx Context) (Component, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch msg.String() {
 		case "esc", "?", "q":
 			h.Close()

@@ -116,7 +116,7 @@ func TestThemeFromMapNoExtraForBuiltins(t *testing.T) {
 	}
 	theme := ThemeFromMap(m)
 	// Built-in keys should NOT appear in Extra
-	if theme.Extra != nil && len(theme.Extra) > 0 {
+	if len(theme.Extra) > 0 {
 		t.Errorf("Extra should be empty for built-in keys only, got %v", theme.Extra)
 	}
 }

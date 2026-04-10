@@ -145,7 +145,7 @@ func TestMain(m *testing.M) {
 	}
 	fmt.Fprintln(w)
 
-	os.Exit(code)
+	os.Exit(code) //nolint:gocritic // TestMain requires os.Exit after m.Run
 }
 
 // ── Screen tests ───────────────────────────────────────────────────────────
@@ -416,8 +416,7 @@ func TestRegionString(t *testing.T) {
 
 type fakeTB struct {
 	testing.TB
-	failed  bool
-	message string
+	failed bool
 }
 
 func (f *fakeTB) Helper()                        {}

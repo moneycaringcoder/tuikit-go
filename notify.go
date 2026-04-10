@@ -249,11 +249,12 @@ func wrapText(text string, width int) []string {
 	var lines []string
 	cur := ""
 	for _, w := range words {
-		if cur == "" {
+		switch {
+		case cur == "":
 			cur = w
-		} else if len(cur)+1+len(w) <= width {
+		case len(cur)+1+len(w) <= width:
 			cur += " " + w
-		} else {
+		default:
 			lines = append(lines, cur)
 			cur = w
 		}

@@ -22,16 +22,6 @@ func makeTestTree() (*tuikit.Tree, []*tuikit.Node) {
 	return t, roots
 }
 
-func sendKey(c tuikit.Component, key string) tuikit.Component {
-	updated, _ := c.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)}, tuikit.Context{})
-	return updated
-}
-
-func sendSpecialKey(c tuikit.Component, keyType tea.KeyType) tuikit.Component {
-	updated, _ := c.Update(tea.KeyMsg{Type: keyType}, tuikit.Context{})
-	return updated
-}
-
 func TestTree_Navigate(t *testing.T) {
 	tree, roots := makeTestTree()
 
@@ -82,7 +72,7 @@ func TestTree_ExpandCollapse(t *testing.T) {
 	updated, _ = tree.Update(tea.KeyMsg{Type: tea.KeyUp}, tuikit.Context{})
 	tree = updated.(*tuikit.Tree)
 	updated, _ = tree.Update(tea.KeyMsg{Type: tea.KeyLeft}, tuikit.Context{})
-	tree = updated.(*tuikit.Tree)
+	_ = updated.(*tuikit.Tree)
 	if parent.Expanded {
 		t.Fatal("parent should be collapsed after left arrow")
 	}
@@ -101,7 +91,7 @@ func TestTree_SpaceToggle(t *testing.T) {
 
 	// Space collapses.
 	updated, _ = tree.Update(tea.KeyMsg{Type: tea.KeySpace}, tuikit.Context{})
-	tree = updated.(*tuikit.Tree)
+	_ = updated.(*tuikit.Tree)
 	if parent.Expanded {
 		t.Fatal("space should collapse parent")
 	}
@@ -119,7 +109,7 @@ func TestTree_Select(t *testing.T) {
 
 	// Enter on parent (which has children, no file) should still call OnSelect.
 	updated, _ := tree2.Update(tea.KeyMsg{Type: tea.KeyEnter}, tuikit.Context{})
-	tree2 = updated.(*tuikit.Tree)
+	_ = updated.(*tuikit.Tree)
 	if selected != roots[0] {
 		t.Fatalf("expected OnSelect called with parent, got %v", selected)
 	}
@@ -164,7 +154,7 @@ func TestTree_ViAlias(t *testing.T) {
 
 	// h collapses.
 	updated, _ = tree.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("h")}, tuikit.Context{})
-	tree = updated.(*tuikit.Tree)
+	_ = updated.(*tuikit.Tree)
 	if roots[0].Expanded {
 		t.Fatal("h should collapse node")
 	}
@@ -200,7 +190,7 @@ func TestTree_OnToggle(t *testing.T) {
 	tree.SetFocused(true)
 
 	updated, _ := tree.Update(tea.KeyMsg{Type: tea.KeyRight}, tuikit.Context{})
-	tree = updated.(*tuikit.Tree)
+	_ = updated.(*tuikit.Tree)
 	if toggled != parent {
 		t.Fatalf("expected OnToggle with parent, got %v", toggled)
 	}

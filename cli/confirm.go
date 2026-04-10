@@ -25,8 +25,7 @@ type confirmModel struct {
 func (m confirmModel) Init() tea.Cmd { return nil }
 
 func (m confirmModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch strings.ToLower(msg.String()) {
 		case "y":
 			m.result = true

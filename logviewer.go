@@ -215,23 +215,23 @@ func (lv *LogViewer) handleKey(msg tea.KeyMsg) tea.Cmd {
 
 	switch msg.String() {
 	case "up", "k":
-		lv.viewport.LineUp(1)
+		lv.viewport.ScrollUp(1)
 		lv.userScrolled = true
 		lv.paused = true
 		return Consumed()
 	case "down", "j":
-		lv.viewport.LineDown(1)
+		lv.viewport.ScrollDown(1)
 		if lv.viewport.AtBottom() {
 			lv.userScrolled = false
 		}
 		return Consumed()
 	case "pgup":
-		lv.viewport.HalfViewUp()
+		lv.viewport.HalfPageUp()
 		lv.userScrolled = true
 		lv.paused = true
 		return Consumed()
 	case "pgdown":
-		lv.viewport.HalfViewDown()
+		lv.viewport.HalfPageDown()
 		if lv.viewport.AtBottom() {
 			lv.userScrolled = false
 		}

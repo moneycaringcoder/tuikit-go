@@ -34,14 +34,6 @@ func (t Theme) glyphsOrDefault() Glyphs {
 	return DefaultGlyphs()
 }
 
-// bordersOrDefault returns the theme borders or DefaultBorders if nil.
-func (t Theme) bordersOrDefault() BorderSet {
-	if t.Borders != nil {
-		return *t.Borders
-	}
-	return DefaultBorders()
-}
-
 // Color returns an app-specific color from Extra by key, falling back to
 // the provided default if the key does not exist.
 func (t Theme) Color(key string, fallback lipgloss.Color) lipgloss.Color {

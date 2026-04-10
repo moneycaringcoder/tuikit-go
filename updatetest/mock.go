@@ -109,12 +109,12 @@ func NewMockServer(releases ...Release) *httptest.Server {
 				}
 				if strings.HasSuffix(name, ".tar.gz") && p.archive != nil {
 					w.Header().Set("Content-Type", "application/gzip")
-					w.Write(p.archive)
+					_, _ = w.Write(p.archive)
 					return
 				}
 				if strings.Contains(name, "checksums") && p.sums != nil {
 					w.Header().Set("Content-Type", "text/plain")
-					w.Write(p.sums)
+					_, _ = w.Write(p.sums)
 					return
 				}
 			}
@@ -145,7 +145,7 @@ func NewMockServer(releases ...Release) *httptest.Server {
 			out = append(out, releaseMap(p, srv.URL))
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(out)
+		_ = json.NewEncoder(w).Encode(out)
 	})
 
 	srv.Start()
@@ -188,7 +188,7 @@ func releaseMap(p *prepared, base string) map[string]interface{} {
 
 func writeReleaseJSON(w http.ResponseWriter, p *prepared, base string) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(releaseMap(p, base))
+	_ = json.NewEncoder(w).Encode(releaseMap(p, base))
 }
 
 // NewMockBinary returns a tiny fake binary payload tagged with the given

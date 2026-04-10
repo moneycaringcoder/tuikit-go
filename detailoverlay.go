@@ -53,8 +53,7 @@ func (d *DetailOverlay[T]) Item() T {
 func (d *DetailOverlay[T]) Init() tea.Cmd { return nil }
 
 func (d *DetailOverlay[T]) Update(msg tea.Msg, ctx Context) (Component, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	if msg, ok := msg.(tea.KeyMsg); ok {
 		if d.opts.OnKey != nil {
 			cmd := d.opts.OnKey(d.item, msg)
 			if cmd != nil {
