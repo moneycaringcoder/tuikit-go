@@ -10,16 +10,22 @@ go get github.com/moneycaringcoder/tuikit-go
 
 - **Table** — adaptive columns, sorting, filtering, custom cell rendering, detail bars, virtual mode for millions of rows
 - **ListView** — generic scrollable list with cursor, header, detail bar, and flash highlighting
-- **LogViewer** — append-only auto-scrolling log with level filtering and substring search
 - **Tabs** — horizontal or vertical tab switcher with click-to-focus content panes
 - **Picker** — fuzzy-searchable command palette (Cmd-K style) with optional preview pane
+- **Form** — multi-field validated form with keyboard navigation and wizard mode
+- **Tree** — collapsible tree view for hierarchical data
+- **LogViewer** — append-only auto-scrolling log with level filtering and substring search
+- **Charts** — bar, line, ring, gauge, heatmap, and sparkline
 - **StatusBar** — left/right footer driven by closures or reactive signals
 - **Help** — auto-generated keybinding reference from the registry; press `?` to toggle
-- **Dual-pane layout** with collapsible sidebar
-- **Dark + light themes** with semantic color tokens and extensible `Extra` color map
+- **Dual-pane layout** with collapsible sidebar, flex layout (HBox/VBox), and split panes
+- **Dark + light themes** with semantic color tokens, hot-reload, and extensible `Extra` color map
 - **CLI primitives** — Confirm, SelectOne, MultiSelect, Input, Password, Spinner, Progress
 - **tuitest** — virtual-terminal testing framework with 30+ assertions, golden files, and a vitest-style reporter
-- **Self-update** — binary replacement with SHA256 verification, rollback, and Homebrew/Scoop detection
+- **Self-update** — binary replacement with SHA256/cosign verification, delta patches, rollback, and Homebrew/Scoop detection
+- **SSH serve** — host any tuikit app over SSH via Charm Wish
+- **Notifications, overlays, command bar, breadcrumbs** and other compound components
+- **Keybinding registry** with conflict detection and auto-generated help screen
 
 ## Quick Start
 
