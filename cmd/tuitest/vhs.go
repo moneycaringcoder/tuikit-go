@@ -78,14 +78,14 @@ func renderGIF(script, outPath string) int {
 		fmt.Fprintf(os.Stderr, "tuitest vhs: create temp tape: %v\n", err)
 		return 1
 	}
-	defer os.Remove(tmp.Name())
+	defer func() { _ = os.Remove(tmp.Name()) }()
 
 	if _, err := tmp.WriteString(script); err != nil {
-		tmp.Close()
+		_ = tmp.Close()
 		fmt.Fprintf(os.Stderr, "tuitest vhs: write tape: %v\n", err)
 		return 1
 	}
-	tmp.Close()
+	_ = tmp.Close()
 
 	// Append --output flag so vhs writes to the requested path.
 	cmd := exec.Command(vhsBin, tmp.Name(), "--output", outPath) //nolint:gosec
