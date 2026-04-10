@@ -14,29 +14,27 @@ linters:
     - ineffassign
   disable:
     - depguard
-
-linters-settings:
-  gocritic:
-    enabled-checks:
-      - appendAssign
-      - argOrder
-      - badCall
-      - badCond
-      - dupArg
-      - dupBranchBody
-      - dupCase
-      - dupSubExpr
-      - flagDeref
-      - nilValReturn
-      - offBy1
-      - sloppyReassign
-      - weakCond
-
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-    - path: examples/
-      linters:
-        - errcheck
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+      - path: examples/
+        linters:
+          - errcheck
+  settings:
+    gocritic:
+      enabled-checks:
+        - appendAssign
+        - argOrder
+        - badCall
+        - badCond
+        - dupArg
+        - dupBranchBody
+        - dupCase
+        - dupSubExpr
+        - flagDeref
+        - nilValReturn
+        - offBy1
+        - sloppyReassign
+        - weakCond
